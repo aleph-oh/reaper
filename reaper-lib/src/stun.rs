@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use crate::types::*;
 
 pub fn synthesize_pred<'a>(
@@ -31,16 +33,24 @@ impl PredNode {
     }
 }
 
+/// [run_unless_stopped] runs [f] unless [stopper] is set. It's recommended that
+/// [f] itself uses [run_unless_stopped] during different phases of expensive computation
+/// to ensure that the request to stop is respected as best as possible.
+fn run_unless_stopped<T>(f: impl FnOnce() -> T, stopper: &AtomicBool) -> Option<T> {
+    match stopper.load(Ordering::SeqCst) {
+        true => None,
+        false => Some(f()),
+    }
+}
+
 fn synthesize(query: &ASTNode, examples: Examples) -> Option<PredNode> {
     // TODO: look at the Scythe paper to see their approach here.
     // TODO: how do we limit the amount of time the synthesizer spends?
+    //  - limit the depth and the time together, limiting time is a little
+    //  less invasive
     // TODO: how do we parallelize this nicely?
+    //  - rayon, spawns / parallel iteration have a nice / reasonable API
     // TODO: should we be only returning one candidate predicate? Maybe we can
     // return many if time allows.
-    //  - Between an arbitrary stopping condition and parallelism it sounds like
-    //  we need a stopper channel that the driver code sends to when it should be
-    //  stopping. However, this makes rayon-style parallelism kind of difficult? Maybe
-    //  we maintain an atomic flag that says whether to start the search in each
-    //  iteration / recursive call.
     todo!()
 }
