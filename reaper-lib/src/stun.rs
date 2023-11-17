@@ -33,9 +33,10 @@ impl PredNode {
     }
 }
 
-/// [run_unless_stopped] runs [f] unless [stopper] is set. It's recommended that
-/// [f] itself uses [run_unless_stopped] during different phases of expensive computation
-/// to ensure that the request to stop is respected as best as possible.
+/// [run_unless_stopped] runs [f] unless [stopper] is set.
+///
+/// It's recommended that [f] itself uses [run_unless_stopped] during different phases of
+/// expensive computation to ensure that the request to stop is respected as best as possible.
 fn run_unless_stopped<T>(f: impl FnOnce() -> T, stopper: &AtomicBool) -> Option<T> {
     match stopper.load(Ordering::SeqCst) {
         true => None,
