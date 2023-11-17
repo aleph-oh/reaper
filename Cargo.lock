@@ -5,3 +5,10 @@ version = 3
 [[package]]
 name = "reaper"
 version = "0.1.0"
+dependencies = [
+ "reaper-lib",
+]
+
+[[package]]
+name = "reaper-lib"
+version = "0.1.0"
