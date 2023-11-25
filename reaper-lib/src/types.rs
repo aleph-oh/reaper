@@ -8,13 +8,16 @@ type Fields = Vec<Field>;
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ASTNode {
     Select {
+        // NOTE: we should think about making this Rc. Cloning fields
+        // whenever we substitute in a predicate will duplicate all the Vector
+        // elements which we don't actually need.
         fields: Option<Fields>,
-        table: Box<ASTNode>,
+        table: Rc<ASTNode>,
         pred: PredNode,
     },
     Join {
-        table1: Box<ASTNode>,
-        table2: Box<ASTNode>,
+        table1: Rc<ASTNode>,
+        table2: Rc<ASTNode>,
         pred: PredNode,
     }, // Note: Rel, Rel can be expressed as select _ from _, _ where True
     Table {
@@ -33,6 +36,7 @@ pub enum ExprNode {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum PredNode {
+    True,
     Lt {
         left: ExprNode,
         right: ExprNode,

@@ -1,5 +1,4 @@
 use bitvec::prelude as bv;
-use core::num;
 use std::sync::atomic::{AtomicBool, Ordering};
 use thiserror::Error;
 
@@ -14,24 +13,15 @@ pub enum InvalidQueryError {
 }
 
 pub fn synthesize_pred<'a>(
-    queries: impl Iterator<Item = &'a ASTNode>,
+    query: &ASTNode,
     examples: Examples,
-) -> Result<Vec<PredNode>, Vec<(&'a ASTNode, InvalidQueryError)>> {
-    // TODO: are we handling the zero-predicate case well?
-    let (queries, errors): (Vec<_>, Vec<_>) = queries
-        .map(|query| (query, AbstractQuery::try_from(query)))
-        .partition(|(_q, r)| Result::is_ok(r));
-    if errors.len() > 0 {
-        return Err(errors
-            .into_iter()
-            .map(|(q, r)| (q, r.unwrap_err()))
-            .collect());
-    }
-
-    let mut predicates: Vec<_> = queries
-        .into_iter()
-        .filter_map(|(_q, r)| synthesize(&r.unwrap(), &examples))
-        .collect();
+) -> Result<Vec<PredNode>, InvalidQueryError> {
+    let query = match AbstractQuery::try_from(query) {
+        Ok(query) => query,
+        Err(InvalidQueryError::TooFewPredicates) => return Ok(vec![PredNode::True]),
+        Err(e) => return Err(e),
+    };
+    let mut predicates = synthesize(&query, &examples);
     predicates.sort_unstable_by_key(PredNode::height);
     Ok(predicates)
 }
@@ -48,6 +38,7 @@ impl ExprNode {
 impl PredNode {
     fn height(&self) -> usize {
         match self {
+            PredNode::True => 1,
             PredNode::Lt { left, right } | PredNode::Eq { left, right } => {
                 left.height().max(right.height()) + 1
             }
@@ -107,6 +98,29 @@ impl ASTNode {
 #[derive(Debug)]
 struct AbstractQuery(ASTNode);
 
+impl AbstractQuery {
+    fn with_predicate(&self, pred: PredNode) -> ASTNode {
+        debug_assert!(self.0.num_holes() == 1);
+        match &self.0 {
+            ASTNode::Select { fields, table, .. } => ASTNode::Select {
+                fields: fields.clone(),
+                table: Rc::clone(table),
+                pred,
+            },
+            ASTNode::Join { table1, table2, .. } => ASTNode::Join {
+                table1: Rc::clone(table1),
+                table2: Rc::clone(table2),
+                pred,
+            },
+            // NOTE: I don't like catch-all patterns for types that might change in the near-future,
+            // so this match explicitly checks the remaining cases. We could do better by also
+            // expanding all the fields, but that feels verbose.
+            n @ ASTNode::Table { .. } => n.clone(),
+            n @ ASTNode::Field { .. } => n.clone(),
+        }
+    }
+}
+
 impl TryFrom<&ASTNode> for AbstractQuery {
     type Error = InvalidQueryError;
 
@@ -119,7 +133,7 @@ impl TryFrom<&ASTNode> for AbstractQuery {
     }
 }
 
-fn synthesize(query: &AbstractQuery, examples: Examples) -> Option<PredNode> {
+fn synthesize(query: &AbstractQuery, examples: Examples) -> Vec<PredNode> {
     // The Scythe paper implements predicate search as a top-down search where we try to generate predicates (simplest-first)
     // such that they produce the expected output. It is essentially an exhaustive search. This leaves a few questions:
     //  - How do we group predicates? We probably want to map a given query result to all the predicates that produce
@@ -131,8 +145,5 @@ fn synthesize(query: &AbstractQuery, examples: Examples) -> Option<PredNode> {
     //  less invasive
     // TODO: how do we parallelize this nicely?
     //  - rayon, spawns / parallel iteration have a nice / reasonable API
-    // TODO: should we be only returning one candidate predicate? Maybe we can
-    // return many if time allows. Combining this with parallelism will require some kind of concurrency-safe vector
-    // (or we can put a Mutex around the Vec).
     todo!()
 }
