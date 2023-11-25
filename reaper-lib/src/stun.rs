@@ -106,6 +106,7 @@ impl ASTNode {
 }
 
 #[derive(Debug)]
+/// AbstractQuery represents a query with *exactly one* hole.
 struct AbstractQuery(ASTNode);
 
 impl AbstractQuery {
