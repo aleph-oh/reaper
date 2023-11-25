@@ -1,5 +1,8 @@
 use bitvec::prelude as bv;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{
+    rc::Rc,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use thiserror::Error;
 
 use crate::types::*;
@@ -12,6 +15,12 @@ pub enum InvalidQueryError {
     TooManyPredicates(usize),
 }
 
+/// [synthesize_pred(query, examples)] synthesizes all predicates found that,
+/// with all examples (i, o), substituting the predicate into the query yields
+/// a query q such that q(i) = o.
+///
+/// If the query is not a valid abstract query, an error is returned.
+/// If no predicate is found, the returned Vec is empty.
 pub fn synthesize_pred<'a>(
     query: &ASTNode,
     examples: Examples,
@@ -85,7 +94,8 @@ fn run_unless_stopped<T>(f: impl FnOnce() -> T, stopper: &AtomicBool) -> Option<
 }
 
 impl ASTNode {
-    fn num_holes(&self) -> usize {
+    /// [t.holes()] returns the number of holes in the AST.
+    fn holes(&self) -> usize {
         match self {
             ASTNode::Select { table, .. } => table.num_holes() + 1,
             ASTNode::Join { table1, table2, .. } => table1.num_holes() + table2.num_holes() + 1,
@@ -99,8 +109,9 @@ impl ASTNode {
 struct AbstractQuery(ASTNode);
 
 impl AbstractQuery {
+    /// [q.with_predicate(p)] returns a new query where p is substituted for the hole in q.
     fn with_predicate(&self, pred: PredNode) -> ASTNode {
-        debug_assert!(self.0.num_holes() == 1);
+        debug_assert!(self.0.holes() == 1);
         match &self.0 {
             ASTNode::Select { fields, table, .. } => ASTNode::Select {
                 fields: fields.clone(),
@@ -125,7 +136,7 @@ impl TryFrom<&ASTNode> for AbstractQuery {
     type Error = InvalidQueryError;
 
     fn try_from(value: &ASTNode) -> Result<Self, Self::Error> {
-        match value.num_holes() {
+        match value.holes() {
             0 => Err(InvalidQueryError::TooFewPredicates),
             1 => Ok(AbstractQuery(value.clone())),
             n => Err(InvalidQueryError::TooManyPredicates(n)),
