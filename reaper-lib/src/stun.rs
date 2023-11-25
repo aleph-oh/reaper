@@ -96,18 +96,10 @@ fn run_unless_stopped<T>(f: impl FnOnce() -> T, stopper: &AtomicBool) -> Option<
 impl ASTNode {
     fn num_holes(&self) -> usize {
         match self {
-            ASTNode::Select {
-                fields: _,
-                table,
-                pred: _,
-            } => table.num_holes() + 1,
-            ASTNode::Join {
-                table1,
-                table2,
-                pred: _,
-            } => table1.num_holes() + table2.num_holes() + 1,
-            ASTNode::Table { name: _ } => 0,
-            ASTNode::Field { name: _ } => 0,
+            ASTNode::Select { table, .. } => table.num_holes() + 1,
+            ASTNode::Join { table1, table2, .. } => table1.num_holes() + table2.num_holes() + 1,
+            ASTNode::Table { .. } => 0,
+            ASTNode::Field { .. } => 0,
         }
     }
 }
@@ -133,6 +125,7 @@ fn synthesize(query: &AbstractQuery, examples: Examples) -> Option<PredNode> {
     //  - How do we group predicates? We probably want to map a given query result to all the predicates that produce
     //  that query result.
     //      - How do we do this pruning before concrete evaluation to reduce the number of concrete evaluations?
+    //  - This predicate grouping also doesn't handle the case where a query returns too many entries.
     // TODO: how do we limit the amount of time the synthesizer spends?
     //  - limit the depth and the time together, limiting time is a little
     //  less invasive
