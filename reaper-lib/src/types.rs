@@ -48,8 +48,8 @@ pub enum PredNode {
 }
 
 pub struct ConcTable {
-    columns: Vec<String>,
-    values: Vec<Vec<isize>>,
+    pub columns: Vec<String>,
+    pub values: Vec<Vec<isize>>,
 }
 
 pub type Examples<'a, 'b> = &'a [&'b [(ConcTable, ConcTable)]];
