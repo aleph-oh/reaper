@@ -42,6 +42,7 @@ impl ExprNode {
             ExprNode::Int { value: _ } => 1,
         }
     }
+    // TODO: test that this works
 }
 
 impl PredNode {
@@ -54,6 +55,8 @@ impl PredNode {
             PredNode::And { left, right } => left.height().max(right.height()) + 1,
         }
     }
+
+    // TODO: test that this works
 }
 
 /// An [IntermediateTable] references a ConcreteTable and contains
@@ -103,6 +106,8 @@ impl ASTNode {
             ASTNode::Field { .. } => 0,
         }
     }
+
+    // TODO: check that we test hole count properly here.
 }
 
 #[derive(Debug)]
@@ -143,6 +148,8 @@ impl TryFrom<&ASTNode> for AbstractQuery {
             n => Err(InvalidQueryError::TooManyPredicates(n)),
         }
     }
+
+    // TODO: test that we correctly error for cases w/ many holes.
 }
 
 fn synthesize(query: &AbstractQuery, examples: Examples) -> Vec<PredNode> {
