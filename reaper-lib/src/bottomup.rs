@@ -19,6 +19,7 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
         for (j, query2) in queries.iter().enumerate() {
             // Join
             let join = ASTNode::Join {
+                fields: todo!(),
                 table1: Rc::new(query.clone()),
                 table2: Rc::new(query2.clone()),
                 pred: PredNode::True,

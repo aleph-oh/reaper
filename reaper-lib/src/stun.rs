@@ -134,7 +134,8 @@ impl AbstractQuery {
                 table: Rc::clone(table),
                 pred,
             },
-            ASTNode::Join { table1, table2, .. } => ASTNode::Join {
+            ASTNode::Join { fields, table1, table2, .. } => ASTNode::Join {
+                fields: fields.clone(),
                 table1: Rc::clone(table1),
                 table2: Rc::clone(table2),
                 pred,

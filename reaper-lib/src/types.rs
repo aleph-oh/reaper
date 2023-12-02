@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Field {
-    name: String,
-    table: String,
+    pub name: String,
+    pub table: String,
 }
 type Fields = Vec<Field>;
 
@@ -17,6 +17,7 @@ pub enum ASTNode {
         pred: PredNode,
     },
     Join {
+        fields: Option<Fields>,
         table1: Rc<ASTNode>,
         table2: Rc<ASTNode>,
         pred: PredNode,
