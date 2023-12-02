@@ -1,6 +1,7 @@
 pub mod bottomup;
 pub mod stun;
 pub mod types;
+pub mod sql;
 
 #[cfg(test)]
 mod tests {

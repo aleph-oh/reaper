@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 bitvec = "1.0.1"
+rusqlite = "0.30.0"
 thiserror = "1.0.50"
