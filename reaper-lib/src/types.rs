@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Field {
     name: String,
@@ -8,9 +10,8 @@ type Fields = Vec<Field>;
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ASTNode {
     Select {
-        // NOTE: we should think about making this Rc. Cloning fields
-        // whenever we substitute in a predicate will duplicate all the Vector
-        // elements which we don't actually need.
+        /// NOTE: we should think about making this Rc. We don't want to
+        /// deeply clone the entire Vec<Field>.
         fields: Option<Fields>,
         table: Rc<ASTNode>,
         pred: PredNode,
@@ -21,9 +22,6 @@ pub enum ASTNode {
         pred: PredNode,
     }, // Note: Rel, Rel can be expressed as select _ from _, _ where True
     Table {
-        name: String,
-    },
-    Field {
         name: String,
     },
 }
