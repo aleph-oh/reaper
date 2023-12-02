@@ -1,3 +1,4 @@
+use crate::sql::*;
 use crate::types::*;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -36,10 +37,6 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
     }
 
     new_queries
-}
-
-fn interpret(query: &ASTNode, example: &Example) -> Vec<ConcTable> {
-    todo!()
 }
 
 fn elim(queries: Vec<ASTNode>, example: &Example) -> Vec<ASTNode> {

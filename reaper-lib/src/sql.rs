@@ -2,10 +2,10 @@ use crate::types::*;
 use rusqlite::{params, params_from_iter, Connection, Error, Result};
 use std::rc::Rc;
 
-pub fn create_table(example: Example) -> Result<Connection, Error> {
+pub fn create_table(input: Vec<ConcTable>) -> Result<Connection, Error> {
     let conn = Connection::open_in_memory()?;
 
-    for table in example.0.iter() {
+    for table in input.iter() {
         // Create table
         let mut create_table = String::from("CREATE TABLE ");
         create_table.push_str(&table.name);
@@ -18,7 +18,6 @@ pub fn create_table(example: Example) -> Result<Connection, Error> {
             }
         }
         create_table.push_str(");");
-        print!("{}", create_table);
         conn.execute(&create_table, params![])?;
 
         // Insert values
@@ -34,7 +33,6 @@ pub fn create_table(example: Example) -> Result<Connection, Error> {
         }
         insert.push_str(");");
 
-        print!("{}", insert);
         for row in table.values.iter() {
             conn.execute(&insert, params_from_iter(row.iter()))?;
         }
@@ -44,9 +42,32 @@ pub fn create_table(example: Example) -> Result<Connection, Error> {
 
 // NOTE: can we make query a reference? maybe there's a reason we can't?
 pub fn eval(query: ASTNode, conn: &Connection) -> Result<ConcTable, Error> {
-    // query_str = create_sql_query(query);
-    // let mut stmt = conn.prepare(query_str)?;
-    todo!();
+    let mut table = ConcTable {
+        name: String::from(""),
+        columns: Vec::new(),
+        values: Vec::new(),
+    };
+
+    let query_str = create_sql_query(query);
+
+    // TODO: there should be a better way of doing this, but remove the paren
+    // at the beginning and end of the query string
+    let query_str = &query_str[1..query_str.len() - 1];
+    let mut stmt = conn.prepare(&query_str)?;
+
+    for column in stmt.column_names().iter() {
+        table.columns.push(String::from(*column));
+    }
+
+    let mut rows = stmt.query(params![])?;
+    while let Some(row) = rows.next()? {
+        let mut row_vec = Vec::new();
+        for i in 0..table.columns.len() {
+            row_vec.push(row.get::<_, isize>(i)?);
+        }
+        table.values.push(row_vec);
+    }
+    Ok(table)
 }
 
 fn create_fields_str(fields: Option<Vec<Field>>) -> String {
@@ -65,7 +86,7 @@ fn create_fields_str(fields: Option<Vec<Field>>) -> String {
     }
 }
 
-fn create_sql_query(query: ASTNode) -> String {
+pub fn create_sql_query(query: ASTNode) -> String {
     let mut sql = String::from("(");
     match query {
         ASTNode::Select {
@@ -168,7 +189,7 @@ mod tests {
             values: vec![vec![1, 2], vec![3, 4]],
         };
 
-        let conn = create_table((example_input, expected_output)).unwrap();
+        let conn = create_table(example_input).unwrap();
         let mut stmt = conn.prepare("SELECT * FROM t1;").unwrap();
         let mut rows = stmt.query(params![]).unwrap();
         let row = rows.next().unwrap().unwrap();
@@ -276,5 +297,39 @@ mod tests {
         let expected = String::from("(SELECT * FROM (SELECT id, role_id FROM (users) WHERE (((id) < (10)) AND ((role_id) = (1)))) JOIN (SELECT id, role_id FROM (users) WHERE (((id) < (10)) AND ((role_id) = (2)))) ON ((users.id) = (users.id)))");
         let actual = create_sql_query(query);
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_eval() {
+        let example_input = vec![
+            ConcTable {
+                name: String::from("t1"),
+                columns: vec![String::from("a"), String::from("b")],
+                values: vec![vec![1, 2], vec![3, 4]],
+            },
+            ConcTable {
+                name: String::from("t2"),
+                columns: vec![String::from("a"), String::from("b")],
+                values: vec![vec![1, 2], vec![5, 6]],
+            },
+        ];
+
+        let expected_output = ConcTable {
+            name: String::from(""),
+            columns: vec![String::from("a"), String::from("b")],
+            values: vec![vec![1, 2], vec![3, 4]],
+        };
+
+        let query = ASTNode::Select {
+            fields: None,
+            table: Rc::new(ASTNode::Table {
+                name: String::from("t1"),
+            }),
+            pred: PredNode::True,
+        };
+
+        let conn = create_table(example_input).unwrap();
+        let table = eval(query, &conn).unwrap();
+        assert_eq!(table, expected_output);
     }
 }
