@@ -35,13 +35,14 @@ pub fn synthesize_pred<'a>(
     query: &ASTNode,
     target: &ConcTable,
     conn: &rusqlite::Connection,
+    max_depth: usize,
 ) -> Result<Vec<PredNode>, SynthesisError> {
     let query = match AbstractQuery::try_from(query) {
         Ok(query) => query,
         Err(InvalidQueryError::TooFewPredicates) => return Ok(vec![PredNode::True]),
         Err(e) => return Err(e)?,
     };
-    let mut predicates = synthesize(&query, target, conn)?;
+    let mut predicates = synthesize(&query, target, conn, max_depth)?;
     predicates.sort_unstable_by_key(PredNode::height);
     Ok(predicates)
 }
@@ -183,7 +184,11 @@ impl PredNode {
     }
 }
 
-fn grow<'a>(with: impl Iterator<Item = &'a PredNode>) -> Vec<PredNode> {
+fn grow<'a>(with: &[PredNode]) -> Vec<PredNode> {
+    todo!()
+}
+
+fn elim(v: &mut Vec<PredNode>) {
     todo!()
 }
 
@@ -191,6 +196,7 @@ fn synthesize(
     query: &AbstractQuery,
     target: &ConcTable,
     conn: &rusqlite::Connection,
+    max_depth: usize,
 ) -> Result<Vec<PredNode>, SynthesisError> {
     // The Scythe paper implements predicate search as a top-down search where we try to generate predicates (simplest-first)
     // such that they produce the expected output. It is essentially an exhaustive search. This leaves a few questions:
@@ -223,17 +229,23 @@ fn synthesize(
     // Now, phrase the concrete table as a bitvector.
     let target_intermediate = target.to_intermediate(&rows);
 
-    let mut predicates = HashMap::new();
-    predicates.insert(bv::bitvec![1; rows.values.len()], vec![PredNode::True]);
     let mut prior_depth_predicates = vec![PredNode::True];
-    // TODO: parametrize over max depth
-    for _depth in 1..10 {
+    let mut vec_to_preds = HashMap::new();
+    vec_to_preds.insert(bv::bitvec![1; rows.values.len()], vec![PredNode::True]);
+    for _depth in 1..max_depth {
         use itertools::Itertools;
-        // TODO: this form of predicate generation is silly b/c we only want to ge
-        let new_predicates: HashMap<_, _> = grow(prior_depth_predicates.iter())
+        // NOTE: this form of predicate generation is maybe a little silly. What if we tried to find
+        // predicates that, when AND-ed, make the right thing (for example)?
+        let mut predicates = grow(&prior_depth_predicates);
+        elim(&mut predicates);
+
+        let mut new_predicates: HashMap<_, _> = predicates
             .into_iter()
             .map(|pred| {
                 let mut v = bv::bitvec![0; rows.values.len()];
+                // TODO: here, make it possible to compute the new bitvectors w/o doing this computation
+                // by doing bitwise ops. Right now we have to re-evaluate each time by testing the predicate,
+                // which is pretty slow.
                 v.iter_mut()
                     .enumerate()
                     .for_each(|(i, mut x)| *x = pred.eval(&rows, i));
@@ -245,23 +257,33 @@ fn synthesize(
             .into_iter()
             .map(|(v, pairs)| {
                 let mut pairs: Vec<_> = pairs.map(|(pred, _v)| pred).collect();
-                // TODO: sort pairs by some metric for complexity.
+                // TODO: sort pairs by some metric for complexity before popping last.
                 let rep = pairs
                     .pop()
                     .expect("to have a pair, group must be non-empty");
                 (v, (rep, pairs))
             })
             .collect();
-        // Now, let's group predicates by their bitvector and pick a representative.
 
-        // Lastly, if we haven't found matches at this depth, go to the next one.
-        prior_depth_predicates = new_predicates
-            .values()
-            .flat_map(|(rep, rest)| std::iter::once(rep).chain(rest.iter()))
-            .cloned()
-            .collect();
+        // When we find a predicate that has the right rows, stop and return it.
+        if let Some((rep, mut rest)) = new_predicates.remove(&target_intermediate.rows) {
+            rest.push(rep);
+            return Ok(rest);
+        }
+
+        // Lastly, if we haven't found matches at this depth, go to the next depth,
+        // which can build on these predicates.
+        let mut new_prior_depth_predicates = Vec::with_capacity(new_predicates.iter().len());
+        for (v, (rep, rest)) in new_predicates.into_iter() {
+            new_prior_depth_predicates.push(rep.clone());
+            let e = vec_to_preds
+                .entry(v)
+                .or_insert_with(|| Vec::with_capacity(rest.len() + 1));
+            e.extend(rest);
+            e.push(rep);
+        }
+
+        prior_depth_predicates = new_prior_depth_predicates;
     }
-
-    // Now, for each abstract query up to
-    todo!()
+    Ok(vec![])
 }
