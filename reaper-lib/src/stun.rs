@@ -97,13 +97,12 @@ fn run_unless_stopped<T>(f: impl FnOnce() -> T, stopper: &AtomicBool) -> Option<
 }
 
 impl ASTNode {
-    /// [t.holes()] returns the number of holes in the AST.
-    fn holes(&self) -> usize {
+    /// [t.num_holes()] returns the number of holes in the AST.
+    fn num_holes(&self) -> usize {
         match self {
             ASTNode::Select { table, .. } => table.num_holes() + 1,
             ASTNode::Join { table1, table2, .. } => table1.num_holes() + table2.num_holes() + 1,
             ASTNode::Table { .. } => 0,
-            ASTNode::Field { .. } => 0,
         }
     }
 
@@ -117,7 +116,7 @@ struct AbstractQuery(ASTNode);
 impl AbstractQuery {
     /// [q.with_predicate(p)] returns a new query where p is substituted for the hole in q.
     fn with_predicate(&self, pred: PredNode) -> ASTNode {
-        debug_assert!(self.0.holes() == 1);
+        debug_assert!(self.0.num_holes() == 1);
         match &self.0 {
             ASTNode::Select { fields, table, .. } => ASTNode::Select {
                 fields: fields.clone(),
@@ -133,7 +132,6 @@ impl AbstractQuery {
             // so this match explicitly checks the remaining cases. We could do better by also
             // expanding all the fields, but that feels verbose.
             n @ ASTNode::Table { .. } => n.clone(),
-            n @ ASTNode::Field { .. } => n.clone(),
         }
     }
 }
@@ -142,7 +140,7 @@ impl TryFrom<&ASTNode> for AbstractQuery {
     type Error = InvalidQueryError;
 
     fn try_from(value: &ASTNode) -> Result<Self, Self::Error> {
-        match value.holes() {
+        match value.num_holes() {
             0 => Err(InvalidQueryError::TooFewPredicates),
             1 => Ok(AbstractQuery(value.clone())),
             n => Err(InvalidQueryError::TooManyPredicates(n)),
