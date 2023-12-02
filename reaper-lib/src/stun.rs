@@ -1,5 +1,6 @@
 use bitvec::prelude as bv;
 use std::{
+    collections::HashMap,
     rc::Rc,
     sync::atomic::{AtomicBool, Ordering},
 };
@@ -171,6 +172,20 @@ impl ConcTable {
     }
 }
 
+fn predicates_with_depth(depth: usize) -> Vec<PredNode> {
+    todo!()
+}
+
+impl PredNode {
+    fn eval(&self, table: &ConcTable, i: usize) -> bool {
+        todo!()
+    }
+}
+
+fn grow<'a>(with: impl Iterator<Item = &'a PredNode>) -> Vec<PredNode> {
+    todo!()
+}
+
 fn synthesize(
     query: &AbstractQuery,
     target: &ConcTable,
@@ -206,6 +221,45 @@ fn synthesize(
     let rows = crate::sql::eval(query.0.clone(), conn)?;
     // Now, phrase the concrete table as a bitvector.
     let target_intermediate = target.to_intermediate(&rows);
+
+    let mut predicates = HashMap::new();
+    predicates.insert(bv::bitvec![1; rows.values.len()], vec![PredNode::True]);
+    let mut prior_depth_predicates = vec![PredNode::True];
+    // TODO: parametrize over max depth
+    for _depth in 1..10 {
+        use itertools::Itertools;
+        // TODO: this form of predicate generation is silly b/c we only want to ge
+        let new_predicates: HashMap<_, _> = grow(prior_depth_predicates.iter())
+            .into_iter()
+            .map(|pred| {
+                let mut v = bv::bitvec![0; rows.values.len()];
+                v.iter_mut()
+                    .enumerate()
+                    .for_each(|(i, mut x)| *x = pred.eval(&rows, i));
+                (pred, v)
+            })
+            // v must be a superset of the target rows since we don't have disjunction.
+            .filter(|(_pred, v)| target_intermediate.rows.clone() & v == target_intermediate.rows)
+            .group_by(|(_pred, v)| v.clone())
+            .into_iter()
+            .map(|(v, pairs)| {
+                let mut pairs: Vec<_> = pairs.map(|(pred, _v)| pred).collect();
+                // TODO: sort pairs by some metric for complexity.
+                let rep = pairs
+                    .pop()
+                    .expect("to have a pair, group must be non-empty");
+                (v, (rep, pairs))
+            })
+            .collect();
+        // Now, let's group predicates by their bitvector and pick a representative.
+
+        // Lastly, if we haven't found matches at this depth, go to the next one.
+        prior_depth_predicates = new_predicates
+            .values()
+            .flat_map(|(rep, rest)| std::iter::once(rep).chain(rest.iter()))
+            .cloned()
+            .collect();
+    }
 
     // Now, for each abstract query up to
     todo!()
