@@ -15,6 +15,15 @@ pub enum InvalidQueryError {
     TooManyPredicates(usize),
 }
 
+// TODO: not a great name here: PredicateSynthesisError instead?
+#[derive(Error, Debug)]
+pub enum SynthesisError {
+    #[error("query execution failed")]
+    DbExecFailed(#[from] rusqlite::Error),
+    #[error("invalid query")]
+    InvalidQuery(#[from] InvalidQueryError),
+}
+
 /// [synthesize_pred(query, example)] synthesizes all predicates found that,
 /// with all examples (i, o), substituting the predicate into the query yields
 /// a query q such that q(i) = o.
@@ -23,14 +32,15 @@ pub enum InvalidQueryError {
 /// If no predicate is found, the returned Vec is empty.
 pub fn synthesize_pred<'a>(
     query: &ASTNode,
-    example: Example,
-) -> Result<Vec<PredNode>, InvalidQueryError> {
+    target: &ConcTable,
+    conn: &rusqlite::Connection,
+) -> Result<Vec<PredNode>, SynthesisError> {
     let query = match AbstractQuery::try_from(query) {
         Ok(query) => query,
         Err(InvalidQueryError::TooFewPredicates) => return Ok(vec![PredNode::True]),
-        Err(e) => return Err(e),
+        Err(e) => return Err(e)?,
     };
-    let mut predicates = synthesize(&query, example);
+    let mut predicates = synthesize(&query, target, conn)?;
     predicates.sort_unstable_by_key(PredNode::height);
     Ok(predicates)
 }
@@ -155,7 +165,17 @@ impl TryFrom<&ASTNode> for AbstractQuery {
     // TODO: test that we correctly error for cases w/ many holes.
 }
 
-fn synthesize(query: &AbstractQuery, example: Example) -> Vec<PredNode> {
+impl ConcTable {
+    fn to_intermediate<'a>(&self, base: &'a ConcTable) -> IntermediateTable<'a> {
+        todo!()
+    }
+}
+
+fn synthesize(
+    query: &AbstractQuery,
+    target: &ConcTable,
+    conn: &rusqlite::Connection,
+) -> Result<Vec<PredNode>, SynthesisError> {
     // The Scythe paper implements predicate search as a top-down search where we try to generate predicates (simplest-first)
     // such that they produce the expected output. It is essentially an exhaustive search. This leaves a few questions:
     //  - How do we group predicates? We probably want to map a given query result to all the predicates that produce
@@ -164,8 +184,29 @@ fn synthesize(query: &AbstractQuery, example: Example) -> Vec<PredNode> {
     //  - This predicate grouping also doesn't handle the case where a query returns too many entries.
     // TODO: how do we limit the amount of time the synthesizer spends?
     //  - limit the depth and the time together, limiting time is a little
-    //  less invasive
+    //   less invasive
     // TODO: how do we parallelize this nicely?
     //  - rayon, spawns / parallel iteration have a nice / reasonable API
+    //
+    // Idea: represent the expected table as its own bitvector relative to the examples.
+    // This is done by evaluating the abstract query to a table, comparing the rows present in it
+    // to the rows present in the expected table, and setting the corresponding bits.
+    //
+    // We then group predicates by what bits in the intermediate table they set, mapping bit-vectors to
+    // the predicates that yield them, and then we search for a predicate that gives the same bit-vector
+    // as the output once we're done generating this large table. Optimization: don't store bit-vectors that
+    // are subsets of the target intermediate table T_out: we only have conjunction so we can never use those to
+    // produce the bitvector for T_out.
+    //
+    // We also want to pick a representative of each predicate class so that way we can evaluate queries
+    // for a given bitvector if we have to (when do we have to?). To pick good representatives, we should
+    // probably rank by some heuristic that captures complexity so we get the fastest possible evaluation.
+
+    // First, evaluate the abstract query.
+    let rows = crate::sql::eval(query.0.clone(), conn)?;
+    // Now, phrase the concrete table as a bitvector.
+    let target_intermediate = target.to_intermediate(&rows);
+
+    // Now, for each abstract query up to
     todo!()
 }
