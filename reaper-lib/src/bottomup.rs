@@ -1,5 +1,6 @@
 use crate::types::*;
 use std::rc::Rc;
+use std::collections::HashMap;
 
 fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
     let mut new_queries = Vec::new();
@@ -36,7 +37,11 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
     new_queries
 }
 
-fn elim(queries: Vec<ASTNode>) -> Vec<ASTNode> {
+fn interpret(query: &ASTNode, examples: &Examples) -> Vec<ConcTable> {
+    todo!()
+}
+
+fn elim(queries: Vec<ASTNode>, examples: Examples) -> Vec<ASTNode> {
     todo!()
 }
 
@@ -57,10 +62,10 @@ pub fn generate_abstract_queries(examples: Examples, depth: i32) -> Vec<ASTNode>
     let mut queries = initial_set(examples);
 
     // Remove equivalent queries and incorrect queries
-    queries = elim(queries);
+    queries = elim(queries, examples);
 
     for _ in 0..depth {
-        queries = elim(queries);
+        queries = elim(queries, examples);
         queries = grow(queries);
     }
 
