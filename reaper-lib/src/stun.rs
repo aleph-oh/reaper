@@ -15,7 +15,7 @@ pub enum InvalidQueryError {
     TooManyPredicates(usize),
 }
 
-/// [synthesize_pred(query, examples)] synthesizes all predicates found that,
+/// [synthesize_pred(query, example)] synthesizes all predicates found that,
 /// with all examples (i, o), substituting the predicate into the query yields
 /// a query q such that q(i) = o.
 ///
@@ -23,14 +23,14 @@ pub enum InvalidQueryError {
 /// If no predicate is found, the returned Vec is empty.
 pub fn synthesize_pred<'a>(
     query: &ASTNode,
-    examples: Examples,
+    example: Example,
 ) -> Result<Vec<PredNode>, InvalidQueryError> {
     let query = match AbstractQuery::try_from(query) {
         Ok(query) => query,
         Err(InvalidQueryError::TooFewPredicates) => return Ok(vec![PredNode::True]),
         Err(e) => return Err(e),
     };
-    let mut predicates = synthesize(&query, &examples);
+    let mut predicates = synthesize(&query, example);
     predicates.sort_unstable_by_key(PredNode::height);
     Ok(predicates)
 }
@@ -155,7 +155,7 @@ impl TryFrom<&ASTNode> for AbstractQuery {
     // TODO: test that we correctly error for cases w/ many holes.
 }
 
-fn synthesize(query: &AbstractQuery, examples: Examples) -> Vec<PredNode> {
+fn synthesize(query: &AbstractQuery, example: Example) -> Vec<PredNode> {
     // The Scythe paper implements predicate search as a top-down search where we try to generate predicates (simplest-first)
     // such that they produce the expected output. It is essentially an exhaustive search. This leaves a few questions:
     //  - How do we group predicates? We probably want to map a given query result to all the predicates that produce

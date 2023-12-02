@@ -59,4 +59,4 @@ pub struct ConcTable {
     pub values: Vec<Vec<isize>>,
 }
 
-pub type Examples<'a, 'b> = &'a [&'b [(ConcTable, ConcTable)]];
+pub type Example = (Vec<ConcTable>, ConcTable);

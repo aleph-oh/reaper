@@ -1,6 +1,6 @@
 use crate::types::*;
-use std::rc::Rc;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
     let mut new_queries = Vec::new();
@@ -37,35 +37,33 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
     new_queries
 }
 
-fn interpret(query: &ASTNode, examples: &Examples) -> Vec<ConcTable> {
+fn interpret(query: &ASTNode, example: &Example) -> Vec<ConcTable> {
     todo!()
 }
 
-fn elim(queries: Vec<ASTNode>, examples: Examples) -> Vec<ASTNode> {
+fn elim(queries: Vec<ASTNode>, example: &Example) -> Vec<ASTNode> {
     todo!()
 }
 
-fn initial_set(examples: Examples) -> Vec<ASTNode> {
+fn initial_set(example: &Example) -> Vec<ASTNode> {
     // Just return the set of all tables
     let mut queries = Vec::new();
-    for example in examples.iter() {
-        for (input, _) in example.iter() {
-            queries.push(ASTNode::Table {
-                name: input.name.clone(),
-            });
-        }
+    for table in example.0.iter() {
+        queries.push(ASTNode::Table {
+            name: table.name.clone(),
+        });
     }
     queries
 }
 
-pub fn generate_abstract_queries(examples: Examples, depth: i32) -> Vec<ASTNode> {
-    let mut queries = initial_set(examples);
+pub fn generate_abstract_queries(example: Example, depth: i32) -> Vec<ASTNode> {
+    let mut queries = initial_set(&example);
 
     // Remove equivalent queries and incorrect queries
-    queries = elim(queries, examples);
+    queries = elim(queries, &example);
 
     for _ in 0..depth {
-        queries = elim(queries, examples);
+        queries = elim(queries, &example);
         queries = grow(queries);
     }
 
