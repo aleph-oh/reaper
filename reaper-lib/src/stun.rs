@@ -102,6 +102,7 @@ impl ASTNode {
         match self {
             ASTNode::Select { table, .. } => table.num_holes() + 1,
             ASTNode::Join { table1, table2, .. } => table1.num_holes() + table2.num_holes() + 1,
+            ASTNode::Concat { table1, table2 } => table1.num_holes() + table2.num_holes(),
             ASTNode::Table { .. } => 0,
         }
     }
@@ -127,6 +128,10 @@ impl AbstractQuery {
                 table1: Rc::clone(table1),
                 table2: Rc::clone(table2),
                 pred,
+            },
+            ASTNode::Concat { table1, table2 } => ASTNode::Concat {
+                table1: Rc::clone(table1),
+                table2: Rc::clone(table2),
             },
             // NOTE: I don't like catch-all patterns for types that might change in the near-future,
             // so this match explicitly checks the remaining cases. We could do better by also

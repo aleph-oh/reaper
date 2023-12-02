@@ -24,6 +24,10 @@ pub enum ASTNode {
     Table {
         name: String,
     },
+    Concat {
+        table1: Rc<ASTNode>,
+        table2: Rc<ASTNode>,
+    },
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -50,6 +54,7 @@ pub enum PredNode {
 }
 
 pub struct ConcTable {
+    pub name: String,
     pub columns: Vec<String>,
     pub values: Vec<Vec<isize>>,
 }
