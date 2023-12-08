@@ -16,9 +16,8 @@ pub enum InvalidQueryError {
     TooManyPredicates(usize),
 }
 
-// TODO: not a great name here: PredicateSynthesisError instead?
 #[derive(Error, Debug)]
-pub enum SynthesisError {
+pub enum PredicateSynthesisError {
     #[error("query execution failed")]
     DbExecFailed(#[from] rusqlite::Error),
     #[error("invalid query")]
@@ -38,7 +37,7 @@ pub fn synthesize_pred<'a>(
     fields: &[String],
     constants: &[isize],
     max_depth: usize,
-) -> Result<Vec<PredNode>, SynthesisError> {
+) -> Result<Vec<PredNode>, PredicateSynthesisError> {
     let query = match AbstractQuery::try_from(query) {
         Ok(query) => query,
         Err(InvalidQueryError::TooFewPredicates) => return Ok(vec![PredNode::True]),
@@ -56,7 +55,6 @@ impl ExprNode {
             ExprNode::Int { value: _ } => 1,
         }
     }
-    // TODO: test that this works
 }
 
 impl PredNode {
@@ -69,8 +67,6 @@ impl PredNode {
             PredNode::And { left, right } => left.height().max(right.height()) + 1,
         }
     }
-
-    // TODO: test that this works
 }
 
 /// An [IntermediateTable] references a ConcreteTable and contains
@@ -270,7 +266,7 @@ fn synthesize(
     fields: &[String],
     constants: &[isize],
     max_depth: usize,
-) -> Result<Vec<PredNode>, SynthesisError> {
+) -> Result<Vec<PredNode>, PredicateSynthesisError> {
     // The Scythe paper implements predicate search as a top-down search where we try to generate predicates (simplest-first)
     // such that they produce the expected output. It is essentially an exhaustive search. This leaves a few questions:
     //  - How do we group predicates? We probably want to map a given query result to all the predicates that produce
@@ -365,4 +361,56 @@ fn synthesize(
     // Finding nothing doesn't indicate an error, but it does indicate that there might be no
     // solutions, or the user will have to try another depth.
     Ok(vec![])
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{ExprNode, PredNode};
+    use proptest::strategy::Strategy;
+
+    fn field_name() -> impl Strategy<Value = ExprNode> {
+        proptest::string::string_regex(".*")
+            .unwrap()
+            .prop_map(|s| ExprNode::FieldName { name: s })
+    }
+
+    fn int() -> impl Strategy<Value = ExprNode> {
+        proptest::num::isize::ANY.prop_map(|n| ExprNode::Int { value: n })
+    }
+
+    fn expr_node() -> impl Strategy<Value = ExprNode> {
+        proptest::prop_oneof!(field_name(), int())
+    }
+
+    fn pred_node() -> impl Strategy<Value = PredNode> {
+        use proptest::prelude::*;
+        let leaf = prop_oneof!(
+            Just(PredNode::True),
+            (expr_node(), expr_node()).prop_map(|(left, right)| PredNode::Lt { left, right }),
+            (expr_node(), expr_node()).prop_map(|(left, right)| PredNode::Eq { left, right }),
+        );
+        leaf.prop_recursive(8, 256, 10, |inner| {
+            inner.clone().prop_flat_map(move |left| {
+                inner.clone().prop_map(move |right| PredNode::And {
+                    left: Box::new(left.clone()),
+                    right: Box::new(right.clone()),
+                })
+            })
+        })
+    }
+    proptest::proptest! {
+        #[test]
+        fn expr_heights_are_1(node in expr_node()) {
+            proptest::prop_assert_eq!(node.height(), 1)
+        }
+
+        #[test]
+        fn pred_heights_are_strictly_larger_than_children(pred in pred_node()) {
+            match &pred {
+                PredNode::Lt { left, right  } | PredNode::Eq { left, right }  => proptest::prop_assert!(left.height() < pred.height() && right.height() < pred.height() ),
+                PredNode::And { left, right } => proptest::prop_assert!(left.height() < pred.height() && right.height() < pred.height() ),
+                PredNode::True => proptest::prop_assert_eq!(pred.height(), 1),
+            }
+        }
+    }
 }
