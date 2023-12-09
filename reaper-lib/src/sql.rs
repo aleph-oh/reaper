@@ -2,7 +2,7 @@ use crate::types::*;
 use rusqlite::{params, params_from_iter, Connection, Error, Result};
 use std::rc::Rc;
 
-pub fn create_table(input: Vec<ConcTable>) -> Result<Connection, Error> {
+pub fn create_table(input: &Vec<ConcTable>) -> Result<Connection, Error> {
     let conn = Connection::open_in_memory()?;
 
     for table in input.iter() {
@@ -41,14 +41,14 @@ pub fn create_table(input: Vec<ConcTable>) -> Result<Connection, Error> {
 }
 
 // NOTE: can we make query a reference? maybe there's a reason we can't?
-pub fn eval(query: ASTNode, conn: &Connection) -> Result<ConcTable, Error> {
+pub fn eval(query: &ASTNode, conn: &Connection) -> Result<ConcTable, Error> {
     let mut table = ConcTable {
         name: String::from(""),
         columns: Vec::new(),
         values: Vec::new(),
     };
 
-    let query_str = create_sql_query(query);
+    let query_str = create_sql_query((*query).clone());
 
     // TODO: there should be a better way of doing this, but remove the paren
     // at the beginning and end of the query string
@@ -189,7 +189,7 @@ mod tests {
             values: vec![vec![1, 2], vec![3, 4]],
         };
 
-        let conn = create_table(example_input).unwrap();
+        let conn = create_table(&example_input).unwrap();
         let mut stmt = conn.prepare("SELECT * FROM t1;").unwrap();
         let mut rows = stmt.query(params![]).unwrap();
         let row = rows.next().unwrap().unwrap();
@@ -328,8 +328,8 @@ mod tests {
             pred: PredNode::True,
         };
 
-        let conn = create_table(example_input).unwrap();
-        let table = eval(query, &conn).unwrap();
+        let conn = create_table(&example_input).unwrap();
+        let table = eval(&query, &conn).unwrap();
         assert_eq!(table, expected_output);
     }
 }

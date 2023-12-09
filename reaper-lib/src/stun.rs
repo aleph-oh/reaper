@@ -219,7 +219,7 @@ fn synthesize(
     // probably rank by some heuristic that captures complexity so we get the fastest possible evaluation.
 
     // First, evaluate the abstract query.
-    let rows = crate::sql::eval(query.0.clone(), conn)?;
+    let rows = crate::sql::eval(&query.0, conn)?;
     // Now, phrase the concrete table as a bitvector.
     let target_intermediate = target.to_intermediate(&rows);
 

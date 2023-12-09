@@ -54,7 +54,7 @@ pub enum PredNode {
     },
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct ConcTable {
     pub name: String,
     pub columns: Vec<String>,
