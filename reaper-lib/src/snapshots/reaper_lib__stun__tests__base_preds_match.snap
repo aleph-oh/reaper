@@ -1,0 +1,167 @@
+---
+source: src/stun.rs
+expression: base_preds
+---
+[
+    True,
+    Eq {
+        left: FieldName {
+            name: "hello",
+        },
+        right: FieldName {
+            name: "hello",
+        },
+    },
+    Lt {
+        left: FieldName {
+            name: "hello",
+        },
+        right: FieldName {
+            name: "hello",
+        },
+    },
+    Eq {
+        left: FieldName {
+            name: "hello",
+        },
+        right: FieldName {
+            name: "world",
+        },
+    },
+    Lt {
+        left: FieldName {
+            name: "hello",
+        },
+        right: FieldName {
+            name: "world",
+        },
+    },
+    Eq {
+        left: FieldName {
+            name: "hello",
+        },
+        right: Int {
+            value: 1,
+        },
+    },
+    Lt {
+        left: FieldName {
+            name: "hello",
+        },
+        right: Int {
+            value: 1,
+        },
+    },
+    Eq {
+        left: FieldName {
+            name: "hello",
+        },
+        right: Int {
+            value: -1,
+        },
+    },
+    Lt {
+        left: FieldName {
+            name: "hello",
+        },
+        right: Int {
+            value: -1,
+        },
+    },
+    Eq {
+        left: FieldName {
+            name: "world",
+        },
+        right: FieldName {
+            name: "world",
+        },
+    },
+    Lt {
+        left: FieldName {
+            name: "world",
+        },
+        right: FieldName {
+            name: "world",
+        },
+    },
+    Eq {
+        left: FieldName {
+            name: "world",
+        },
+        right: Int {
+            value: 1,
+        },
+    },
+    Lt {
+        left: FieldName {
+            name: "world",
+        },
+        right: Int {
+            value: 1,
+        },
+    },
+    Eq {
+        left: FieldName {
+            name: "world",
+        },
+        right: Int {
+            value: -1,
+        },
+    },
+    Lt {
+        left: FieldName {
+            name: "world",
+        },
+        right: Int {
+            value: -1,
+        },
+    },
+    Eq {
+        left: Int {
+            value: 1,
+        },
+        right: Int {
+            value: 1,
+        },
+    },
+    Lt {
+        left: Int {
+            value: 1,
+        },
+        right: Int {
+            value: 1,
+        },
+    },
+    Eq {
+        left: Int {
+            value: 1,
+        },
+        right: Int {
+            value: -1,
+        },
+    },
+    Lt {
+        left: Int {
+            value: 1,
+        },
+        right: Int {
+            value: -1,
+        },
+    },
+    Eq {
+        left: Int {
+            value: -1,
+        },
+        right: Int {
+            value: -1,
+        },
+    },
+    Lt {
+        left: Int {
+            value: -1,
+        },
+        right: Int {
+            value: -1,
+        },
+    },
+]

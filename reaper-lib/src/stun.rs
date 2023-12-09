@@ -413,4 +413,13 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn base_preds_match() {
+        let base_preds =
+            super::base_preds(&[String::from("hello"), String::from("world")], &[1, -1]);
+        insta::assert_debug_snapshot!(base_preds);
+    }
+
+    // TODO: add an insta test checking that the right predicates are being synthesized.
 }
