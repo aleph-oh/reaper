@@ -250,7 +250,13 @@ fn base_preds(fields: &[String], constants: &[isize]) -> Vec<PredNode> {
 
 fn grow(with: &[PredNode], base_predicates: &[PredNode]) -> Vec<PredNode> {
     let mut new = Vec::with_capacity(with.len());
-    for p1 in with.iter().chain(base_predicates.iter()) {
+    for p1 in with.iter().chain(base_predicates.iter()).cloned() {
+        for p2 in with.iter().chain(base_predicates.iter()).cloned() {
+            new.push(PredNode::And {
+                left: Box::new(p1.clone()),
+                right: Box::new(p2),
+            })
+        }
         new.push(PredNode::And {
             left: Box::new(p1.clone()),
             right: Box::new(PredNode::True),
@@ -368,6 +374,8 @@ mod tests {
     use crate::types::{ExprNode, PredNode};
     use proptest::strategy::Strategy;
 
+    use super::grow;
+
     fn field_name() -> impl Strategy<Value = ExprNode> {
         proptest::string::string_regex(".*")
             .unwrap()
@@ -416,9 +424,29 @@ mod tests {
 
     #[test]
     fn base_preds_match() {
+        // TODO: it's kinda weird here that we don't include the base predicates.
         let base_preds =
             super::base_preds(&[String::from("hello"), String::from("world")], &[1, -1]);
         insta::assert_debug_snapshot!(base_preds);
+    }
+
+    #[test]
+    fn growing_preds_match() {
+        let base_preds = [PredNode::Lt {
+            left: ExprNode::FieldName {
+                name: String::from("hello"),
+            },
+            right: ExprNode::FieldName {
+                name: String::from("world"),
+            },
+        }];
+        let grow_with = [PredNode::Lt {
+            left: ExprNode::Int { value: 1 },
+            right: ExprNode::Int { value: 2 },
+        }];
+
+        let grown = grow(&grow_with, &base_preds);
+        insta::assert_debug_snapshot!(grown);
     }
 
     // TODO: add an insta test checking that the right predicates are being synthesized.

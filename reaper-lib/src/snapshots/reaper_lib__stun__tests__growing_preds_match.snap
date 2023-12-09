@@ -1,0 +1,100 @@
+---
+source: src/stun.rs
+expression: grown
+---
+[
+    And {
+        left: Lt {
+            left: Int {
+                value: 1,
+            },
+            right: Int {
+                value: 2,
+            },
+        },
+        right: Lt {
+            left: Int {
+                value: 1,
+            },
+            right: Int {
+                value: 2,
+            },
+        },
+    },
+    And {
+        left: Lt {
+            left: Int {
+                value: 1,
+            },
+            right: Int {
+                value: 2,
+            },
+        },
+        right: Lt {
+            left: FieldName {
+                name: "hello",
+            },
+            right: FieldName {
+                name: "world",
+            },
+        },
+    },
+    And {
+        left: Lt {
+            left: Int {
+                value: 1,
+            },
+            right: Int {
+                value: 2,
+            },
+        },
+        right: True,
+    },
+    And {
+        left: Lt {
+            left: FieldName {
+                name: "hello",
+            },
+            right: FieldName {
+                name: "world",
+            },
+        },
+        right: Lt {
+            left: Int {
+                value: 1,
+            },
+            right: Int {
+                value: 2,
+            },
+        },
+    },
+    And {
+        left: Lt {
+            left: FieldName {
+                name: "hello",
+            },
+            right: FieldName {
+                name: "world",
+            },
+        },
+        right: Lt {
+            left: FieldName {
+                name: "hello",
+            },
+            right: FieldName {
+                name: "world",
+            },
+        },
+    },
+    And {
+        left: Lt {
+            left: FieldName {
+                name: "hello",
+            },
+            right: FieldName {
+                name: "world",
+            },
+        },
+        right: True,
+    },
+]
