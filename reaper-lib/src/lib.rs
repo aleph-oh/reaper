@@ -25,11 +25,13 @@ pub fn synthesize(
     constants: Vec<isize>,
 ) -> Result<types::ASTNode, SynthesisError> {
     let conn = sql::create_table(&input).expect("Failed to create table");
-    let queries = generate_abstract_queries((input, output.clone()), 3, &conn);
+    // TODO: parametrize over abstract query depth
+    let queries = generate_abstract_queries((input, output.clone()), 2, &conn);
     let concrete_queries: Vec<types::ASTNode> = queries
         .iter()
         .flat_map(|q| {
             let fields = get_fields(q);
+            // TODO: parametrize over predicate depth
             let predicates = stun::synthesize_pred(q, &output, &conn, &fields, &constants, 5);
             match predicates {
                 Err(e) => itertools::Either::Left(std::iter::once(Err(e))),
