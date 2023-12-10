@@ -48,27 +48,6 @@ pub fn synthesize_pred<'a>(
     Ok(predicates)
 }
 
-impl ExprNode {
-    fn height(&self) -> usize {
-        match self {
-            ExprNode::Field(_) => 1,
-            ExprNode::Int { value: _ } => 1,
-        }
-    }
-}
-
-impl PredNode {
-    fn height(&self) -> usize {
-        match self {
-            PredNode::True => 1,
-            PredNode::Lt { left, right } | PredNode::Eq { left, right } => {
-                left.height().max(right.height()) + 1
-            }
-            PredNode::And { left, right } => left.height().max(right.height()) + 1,
-        }
-    }
-}
-
 /// An [IntermediateTable] references a ConcreteTable and contains
 /// a bit-vector of size [t.values.len()] where bit i is set if
 /// row i is in the table.

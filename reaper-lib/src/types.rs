@@ -32,6 +32,26 @@ pub enum ASTNode {
     },
 }
 
+impl ASTNode {
+    pub(crate) fn height(&self) -> usize {
+        match self {
+            ASTNode::Select {
+                fields,
+                table,
+                pred,
+            } => table.height().max(pred.height()),
+            ASTNode::Join {
+                fields,
+                table1,
+                table2,
+                pred,
+            } => table1.height().max(table2.height()).max(pred.height()),
+            ASTNode::Table { name, columns } => 1,
+            ASTNode::Concat { table1, table2 } => table1.height().max(table2.height()),
+        }
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ExprNode {
     Field(Field),
@@ -53,6 +73,27 @@ pub enum PredNode {
         left: Box<PredNode>,
         right: Box<PredNode>,
     },
+}
+
+impl ExprNode {
+    pub(crate) fn height(&self) -> usize {
+        match self {
+            ExprNode::Field(_) => 1,
+            ExprNode::Int { value: _ } => 1,
+        }
+    }
+}
+
+impl PredNode {
+    pub(crate) fn height(&self) -> usize {
+        match self {
+            PredNode::True => 1,
+            PredNode::Lt { left, right } | PredNode::Eq { left, right } => {
+                left.height().max(right.height()) + 1
+            }
+            PredNode::And { left, right } => left.height().max(right.height()) + 1,
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]

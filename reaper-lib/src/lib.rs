@@ -41,6 +41,11 @@ pub fn synthesize(
                 }
             }
         })
+        .filter(|q| match q {
+            Ok(types::ASTNode::Table { .. }) => false,
+            Ok(_) => true,
+            Err(_) => true,
+        })
         .collect::<Result<_, _>>()?;
     match concrete_queries.into_iter().max_by_key(query_rank) {
         None => Err(SynthesisError::NoQueriesFound),
