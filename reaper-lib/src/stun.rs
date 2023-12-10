@@ -122,11 +122,11 @@ impl ASTNode {
 
 #[derive(Debug)]
 /// AbstractQuery represents a query with *exactly one* hole.
-struct AbstractQuery(ASTNode);
+pub(crate) struct AbstractQuery(ASTNode);
 
 impl AbstractQuery {
     /// [q.with_predicate(p)] returns a new query where p is substituted for the hole in q.
-    fn with_predicate(&self, pred: PredNode) -> ASTNode {
+    pub(crate) fn with_predicate(&self, pred: PredNode) -> ASTNode {
         debug_assert!(self.0.num_holes() == 1);
         match &self.0 {
             ASTNode::Select { fields, table, .. } => ASTNode::Select {
@@ -371,6 +371,9 @@ fn synthesize(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
+    use crate::stun::Environment;
     use crate::types::{ExprNode, PredNode};
     use proptest::strategy::Strategy;
 
@@ -449,5 +452,54 @@ mod tests {
         insta::assert_debug_snapshot!(grown);
     }
 
-    // TODO: add an insta test checking that the right predicates are being synthesized.
+    #[test]
+    fn predicate_equality() {
+        let environment = Environment(HashMap::from([
+            (String::from("a"), 1),
+            (String::from("b"), 2),
+        ]));
+        let node = PredNode::Eq {
+            left: ExprNode::FieldName {
+                name: String::from("a"),
+            },
+            right: ExprNode::Int { value: 1 },
+        };
+        assert!(node.eval(&environment))
+    }
+
+    #[test]
+    fn predicate_inequality() {
+        let environment = Environment(HashMap::from([
+            (String::from("a"), 1),
+            (String::from("b"), 2),
+        ]));
+        let node = PredNode::Eq {
+            left: ExprNode::FieldName {
+                name: String::from("a"),
+            },
+            right: ExprNode::FieldName {
+                name: String::from("b"),
+            },
+        };
+        assert!(!node.eval(&environment))
+    }
+
+    #[test]
+    fn predicate_comparison() {
+        let environment = Environment(HashMap::from([
+            (String::from("a"), 1),
+            (String::from("b"), 2),
+        ]));
+        let node = PredNode::Lt {
+            left: ExprNode::FieldName {
+                name: String::from("a"),
+            },
+            right: ExprNode::FieldName {
+                name: String::from("b"),
+            },
+        };
+        assert!(node.eval(&environment))
+    }
+
+    // TODO: add an insta test that we find the right predicates for a pretty simple example
 }
