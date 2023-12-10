@@ -250,7 +250,7 @@ fn base_preds(fields: &[String], constants: &[isize]) -> Vec<PredNode> {
 
 fn grow(with: &[PredNode], base_predicates: &[PredNode]) -> Vec<PredNode> {
     let mut new = Vec::with_capacity(with.len());
-    for p1 in with.iter().chain(base_predicates.iter()).cloned() {
+    for p1 in with.iter().chain(base_predicates.iter()) {
         for p2 in with.iter().chain(base_predicates.iter()).cloned() {
             new.push(PredNode::And {
                 left: Box::new(p1.clone()),

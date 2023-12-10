@@ -1,4 +1,4 @@
-use bitvec::field;
+
 use rusqlite::Connection;
 
 use crate::sql::*;
@@ -73,31 +73,31 @@ fn powerset<T>(s: &[T]) -> Vec<Vec<T>> where T: Clone {
 // Return every combination of fields possible
 // TODO: I don't actually want to be copying the fields everywhere...
 fn field_combinations(query: &ASTNode) -> Vec<Vec<Field>> {
-    let fields = get_fields(&query);
-    let mut field_combinations = powerset(&fields);
-    field_combinations
+    let fields = get_fields(query);
+    
+    powerset(&fields)
 }
 
 fn field_combinations_join(query1: &ASTNode, query2: &ASTNode) -> Vec<Vec<Field>> {
-  let fields1 = get_fields(&query1);
-  let fields2 = get_fields(&query2);
+  let fields1 = get_fields(query1);
+  let fields2 = get_fields(query2);
 
   // Union the fields
-  let mut fields = fields1.clone();
+  let mut fields = fields1;
   for field in fields2.iter() {
       if !fields.contains(field) {
           fields.push(field.clone());
       }
   }
 
-  let mut field_combinations = powerset(&fields);
-  field_combinations
+  
+  powerset(&fields)
 }
 
 fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
     let mut new_queries = Vec::new();
 
-    for (i, query) in queries.iter().enumerate() {
+    for (_i, query) in queries.iter().enumerate() {
         // Identity
         new_queries.push(query.clone());
 
@@ -112,7 +112,7 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
             new_queries.push(select);
         }        
 
-        for (j, query2) in queries.iter().enumerate() {
+        for (_j, query2) in queries.iter().enumerate() {
             // Join
             let field_powerset = field_combinations_join(query, query2);
             for fields in field_powerset.iter() {
@@ -137,7 +137,7 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
     new_queries
 }
 
-fn elim(queries: Vec<ASTNode>, example: &Example, conn: &Connection) -> Vec<ASTNode> {
+fn elim(queries: Vec<ASTNode>, _example: &Example, conn: &Connection) -> Vec<ASTNode> {
     // Map output to representative query
     let mut output_map = HashMap::new();
 
@@ -175,19 +175,19 @@ fn initial_set(example: &Example) -> Vec<ASTNode> {
     queries
 }
 
-pub fn generate_abstract_queries(example: Example, depth: i32, conn: &Connection) -> Vec<ASTNode> {
+pub fn generate_abstract_queries(example: Example, _depth: i32, conn: &Connection) -> Vec<ASTNode> {
     let mut queries = initial_set(&example);
 
     for _ in 0..3 {
         queries = grow(queries);
-        println!("{}", "After grow");
+        println!("After grow");
         for query in queries.iter() {
             println!("{:?}", query);
         }
         queries = elim(queries, &example, conn);
 
         for query in queries.iter() {
-            println!("{}", "After grow and elim");
+            println!("After grow and elim");
             println!("{:?}", query);
         }
     }
