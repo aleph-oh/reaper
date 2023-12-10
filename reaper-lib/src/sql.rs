@@ -1,8 +1,8 @@
 use crate::types::*;
 use rusqlite::{params, params_from_iter, Connection, Error, Result};
+use std::rc::Rc;
 
-
-pub fn create_table(input: &Vec<ConcTable>) -> Result<Connection, Error> {
+pub fn create_table(input: &[ConcTable]) -> Result<Connection, Error> {
     let conn = Connection::open_in_memory()?;
 
     for table in input.iter() {
@@ -11,7 +11,7 @@ pub fn create_table(input: &Vec<ConcTable>) -> Result<Connection, Error> {
         create_table.push_str(&table.name);
         create_table.push_str(" (");
         for (i, field) in table.columns.iter().enumerate() {
-            create_table.push_str(field);
+            create_table.push_str(&field);
             create_table.push_str(" INTEGER");
             if i != table.columns.len() - 1 {
                 create_table.push_str(", ");
@@ -53,7 +53,7 @@ pub fn eval(query: &ASTNode, conn: &Connection) -> Result<ConcTable, Error> {
     // TODO: there should be a better way of doing this, but remove the paren
     // at the beginning and end of the query string
     let query_str = &query_str[1..query_str.len() - 1];
-    let mut stmt = conn.prepare(query_str)?;
+    let mut stmt = conn.prepare(&query_str)?;
 
     for column in stmt.column_names().iter() {
         table.columns.push(String::from(*column));
@@ -90,7 +90,7 @@ pub fn create_sql_query(query: ASTNode) -> String {
     let mut sql = String::from("(");
     match query {
         ASTNode::Select {
-            fields,
+            fields: fields,
             table,
             pred,
         } => {
@@ -102,7 +102,7 @@ pub fn create_sql_query(query: ASTNode) -> String {
             sql.push_str(&create_sql_pred(pred));
         }
         ASTNode::Join {
-            fields,
+            fields: fields,
             table1,
             table2,
             pred,
@@ -123,7 +123,7 @@ pub fn create_sql_query(query: ASTNode) -> String {
             sql.push_str(&create_sql_query((*table2).clone()));
         }
     }
-    sql.push(')');
+    sql.push_str(")");
     sql
 }
 
@@ -135,7 +135,7 @@ fn create_sql_pred(pred: PredNode) -> String {
             sql.push_str(&create_sql_expr(left));
             sql.push_str(" < ");
             sql.push_str(&create_sql_expr(right));
-            sql.push(')');
+            sql.push_str(")");
             sql
         }
         PredNode::Eq { left, right } => {
@@ -143,7 +143,7 @@ fn create_sql_pred(pred: PredNode) -> String {
             sql.push_str(&create_sql_expr(left));
             sql.push_str(" = ");
             sql.push_str(&create_sql_expr(right));
-            sql.push(')');
+            sql.push_str(")");
             sql
         }
         PredNode::And { left, right } => {
@@ -151,7 +151,7 @@ fn create_sql_pred(pred: PredNode) -> String {
             sql.push_str(&create_sql_pred(*left));
             sql.push_str(" AND ");
             sql.push_str(&create_sql_pred(*right));
-            sql.push(')');
+            sql.push_str(")");
             sql
         }
     }
@@ -159,8 +159,8 @@ fn create_sql_pred(pred: PredNode) -> String {
 
 fn create_sql_expr(expr: ExprNode) -> String {
     match expr {
-        ExprNode::FieldName { name } => format!("({})", name),
-        ExprNode::Int { value } => format!("({})", value),
+        ExprNode::Field(field) => format!("({}.{})", field.table, field.name),
+        ExprNode::Int { value } => format!("({})", value.to_string()),
     }
 }
 
@@ -244,15 +244,17 @@ mod tests {
                 }),
                 pred: PredNode::And {
                     left: Box::new(PredNode::Lt {
-                        left: ExprNode::FieldName {
+                        left: ExprNode::Field(Field {
+                            table: String::from("users"),
                             name: String::from("id"),
-                        },
+                        }),
                         right: ExprNode::Int { value: 10 },
                     }),
                     right: Box::new(PredNode::Eq {
-                        left: ExprNode::FieldName {
+                        left: ExprNode::Field(Field {
+                            table: String::from("users"),
                             name: String::from("role_id"),
-                        },
+                        }),
                         right: ExprNode::Int { value: 1 },
                     }),
                 },
@@ -274,26 +276,30 @@ mod tests {
                 }),
                 pred: PredNode::And {
                     left: Box::new(PredNode::Lt {
-                        left: ExprNode::FieldName {
+                        left: ExprNode::Field(Field {
+                            table: String::from("users"),
                             name: String::from("id"),
-                        },
+                        }),
                         right: ExprNode::Int { value: 10 },
                     }),
                     right: Box::new(PredNode::Eq {
-                        left: ExprNode::FieldName {
+                        left: ExprNode::Field(Field {
+                            table: String::from("users"),
                             name: String::from("role_id"),
-                        },
+                        }),
                         right: ExprNode::Int { value: 2 },
                     }),
                 },
             }),
             pred: PredNode::Eq {
-                left: ExprNode::FieldName {
-                    name: String::from("users.id"),
-                },
-                right: ExprNode::FieldName {
-                    name: String::from("users.id"),
-                },
+                left: ExprNode::Field(Field {
+                    table: String::from("users"),
+                    name: String::from("id"),
+                }),
+                right: ExprNode::Field(Field {
+                    table: String::from("users"),
+                    name: String::from("id"),
+                }),
             },
         };
 

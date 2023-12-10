@@ -34,7 +34,7 @@ pub fn synthesize_pred<'a>(
     query: &ASTNode,
     target: &ConcTable,
     conn: &rusqlite::Connection,
-    fields: &[String],
+    fields: &[Field],
     constants: &[isize],
     max_depth: usize,
 ) -> Result<Vec<PredNode>, PredicateSynthesisError> {
@@ -51,7 +51,7 @@ pub fn synthesize_pred<'a>(
 impl ExprNode {
     fn height(&self) -> usize {
         match self {
-            ExprNode::FieldName { name: _ } => 1,
+            ExprNode::Field(_) => 1,
             ExprNode::Int { value: _ } => 1,
         }
     }
@@ -199,7 +199,7 @@ impl Environment {
 impl ExprNode {
     fn eval(&self, env: &Environment) -> isize {
         match self {
-            ExprNode::FieldName { name } => *env
+            ExprNode::Field(Field { table: _, name }) => *env
                 .0
                 .get(name)
                 .expect("well-formed predicate implies a value in env"),
@@ -219,17 +219,15 @@ impl PredNode {
     }
 }
 
-fn base_exprs(fields: &[String], constants: &[isize]) -> Vec<ExprNode> {
+fn base_exprs(fields: &[Field], constants: &[isize]) -> Vec<ExprNode> {
     fields
         .iter()
-        .map(|name| ExprNode::FieldName {
-            name: name.to_string(),
-        })
+        .map(|field| ExprNode::Field(field.clone()))
         .chain(constants.iter().map(|n| ExprNode::Int { value: *n }))
         .collect()
 }
 
-fn base_preds(fields: &[String], constants: &[isize]) -> Vec<PredNode> {
+fn base_preds(fields: &[Field], constants: &[isize]) -> Vec<PredNode> {
     let exprs = base_exprs(fields, constants);
     let mut new = Vec::with_capacity(exprs.len() * 2);
     new.push(PredNode::True);
@@ -269,7 +267,7 @@ fn synthesize(
     query: &AbstractQuery,
     target: &ConcTable,
     conn: &rusqlite::Connection,
-    fields: &[String],
+    fields: &[Field],
     constants: &[isize],
     max_depth: usize,
 ) -> Result<Vec<PredNode>, PredicateSynthesisError> {
@@ -380,9 +378,12 @@ mod tests {
     use super::grow;
 
     fn field_name() -> impl Strategy<Value = ExprNode> {
-        proptest::string::string_regex(".*")
-            .unwrap()
-            .prop_map(|s| ExprNode::FieldName { name: s })
+        proptest::string::string_regex(".*").unwrap().prop_map(|s| {
+            ExprNode::Field(Field {
+                name: s,
+                table: String::from("t"),
+            })
+        })
     }
 
     fn int() -> impl Strategy<Value = ExprNode> {
@@ -436,12 +437,14 @@ mod tests {
     #[test]
     fn growing_preds_match() {
         let base_preds = [PredNode::Lt {
-            left: ExprNode::FieldName {
+            left: ExprNode::Field(Field {
+                table: String::from("t"),
                 name: String::from("hello"),
-            },
-            right: ExprNode::FieldName {
+            }),
+            right: ExprNode::Field(Field {
+                table: String::from("t"),
                 name: String::from("world"),
-            },
+            }),
         }];
         let grow_with = [PredNode::Lt {
             left: ExprNode::Int { value: 1 },
@@ -459,9 +462,10 @@ mod tests {
             (String::from("b"), 2),
         ]));
         let node = PredNode::Eq {
-            left: ExprNode::FieldName {
+            left: ExprNode::Field(Field {
+                table: String::from("t"),
                 name: String::from("a"),
-            },
+            }),
             right: ExprNode::Int { value: 1 },
         };
         assert!(node.eval(&environment))
@@ -474,12 +478,14 @@ mod tests {
             (String::from("b"), 2),
         ]));
         let node = PredNode::Eq {
-            left: ExprNode::FieldName {
+            left: ExprNode::Field(Field {
+                table: String::from("t"),
                 name: String::from("a"),
-            },
-            right: ExprNode::FieldName {
+            }),
+            right: ExprNode::Field(Field {
+                table: String::from("t"),
                 name: String::from("b"),
-            },
+            }),
         };
         assert!(!node.eval(&environment))
     }
@@ -491,12 +497,14 @@ mod tests {
             (String::from("b"), 2),
         ]));
         let node = PredNode::Lt {
-            left: ExprNode::FieldName {
+            left: ExprNode::Field(Field {
+                table: String::from("t"),
                 name: String::from("a"),
-            },
-            right: ExprNode::FieldName {
+            }),
+            right: ExprNode::Field(Field {
+                table: String::from("t"),
                 name: String::from("b"),
-            },
+            }),
         };
         assert!(node.eval(&environment))
     }

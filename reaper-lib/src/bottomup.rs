@@ -1,4 +1,3 @@
-
 use rusqlite::Connection;
 
 use crate::sql::*;
@@ -7,41 +6,49 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 // Get fields from any ASTNode
-fn get_fields(node: &ASTNode) -> Vec<Field> {
-  match node {
-      ASTNode::Select { fields, table, .. } => {
-          let mut fields = match fields {
-              Some(fields) => fields.clone(),
-              None => get_fields(table),
-          };
-          fields.sort_by(|a, b| a.name.cmp(&b.name));
-          fields
-      }
-      ASTNode::Join { fields, table1, table2, .. } => {
-          let mut fields = match fields {
-              Some(fields) => fields.clone(),
-              None => {
-                  let mut fields1 = get_fields(table1);
-                  let mut fields2 = get_fields(table2);
-                  fields1.append(&mut fields2);
-                  fields1
-              }
-          };
-          fields.sort_by(|a, b| a.name.cmp(&b.name));
-          fields
-      }
-      ASTNode::Table { name, columns } => columns
-          .iter()
-          .map(|col| Field { name: col.clone(), table: name.clone() })
-          .collect(),
-      ASTNode::Concat { table1, table2 } => {
-          let mut fields1 = get_fields(table1);
-          let mut fields2 = get_fields(table2);
-          fields1.append(&mut fields2);
-          fields1.sort_by(|a, b| a.name.cmp(&b.name));
-          fields1
-      }
-  }
+pub fn get_fields(node: &ASTNode) -> Vec<Field> {
+    match node {
+        ASTNode::Select { fields, table, .. } => {
+            let mut fields = match fields {
+                Some(fields) => fields.clone(),
+                None => get_fields(table),
+            };
+            fields.sort_by(|a, b| a.name.cmp(&b.name));
+            fields
+        }
+        ASTNode::Join {
+            fields,
+            table1,
+            table2,
+            ..
+        } => {
+            let mut fields = match fields {
+                Some(fields) => fields.clone(),
+                None => {
+                    let mut fields1 = get_fields(table1);
+                    let mut fields2 = get_fields(table2);
+                    fields1.append(&mut fields2);
+                    fields1
+                }
+            };
+            fields.sort_by(|a, b| a.name.cmp(&b.name));
+            fields
+        }
+        ASTNode::Table { name, columns } => columns
+            .iter()
+            .map(|col| Field {
+                name: col.clone(),
+                table: name.clone(),
+            })
+            .collect(),
+        ASTNode::Concat { table1, table2 } => {
+            let mut fields1 = get_fields(table1);
+            let mut fields2 = get_fields(table2);
+            fields1.append(&mut fields2);
+            fields1.sort_by(|a, b| a.name.cmp(&b.name));
+            fields1
+        }
+    }
 }
 
 fn is_superset(result: &ConcTable, expected: &ConcTable) -> bool {
@@ -62,36 +69,42 @@ fn is_superset(result: &ConcTable, expected: &ConcTable) -> bool {
     true
 }
 
-fn powerset<T>(s: &[T]) -> Vec<Vec<T>> where T: Clone {
-  (1..2usize.pow(s.len() as u32)).map(|i| {
-       s.iter().enumerate().filter(|&(t, _)| (i >> t) % 2 == 1)
-                           .map(|(_, element)| element.clone())
-                           .collect()
-   }).collect()
-}   
+fn powerset<T>(s: &[T]) -> Vec<Vec<T>>
+where
+    T: Clone,
+{
+    (1..2usize.pow(s.len() as u32))
+        .map(|i| {
+            s.iter()
+                .enumerate()
+                .filter(|&(t, _)| (i >> t) % 2 == 1)
+                .map(|(_, element)| element.clone())
+                .collect()
+        })
+        .collect()
+}
 
 // Return every combination of fields possible
 // TODO: I don't actually want to be copying the fields everywhere...
 fn field_combinations(query: &ASTNode) -> Vec<Vec<Field>> {
     let fields = get_fields(query);
-    
+
     powerset(&fields)
 }
 
 fn field_combinations_join(query1: &ASTNode, query2: &ASTNode) -> Vec<Vec<Field>> {
-  let fields1 = get_fields(query1);
-  let fields2 = get_fields(query2);
+    let fields1 = get_fields(query1);
+    let fields2 = get_fields(query2);
 
-  // Union the fields
-  let mut fields = fields1;
-  for field in fields2.iter() {
-      if !fields.contains(field) {
-          fields.push(field.clone());
-      }
-  }
+    // Union the fields
+    let mut fields = fields1;
+    for field in fields2.iter() {
+        if !fields.contains(field) {
+            fields.push(field.clone());
+        }
+    }
 
-  
-  powerset(&fields)
+    powerset(&fields)
 }
 
 fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
@@ -110,7 +123,7 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
                 pred: PredNode::True,
             };
             new_queries.push(select);
-        }        
+        }
 
         for (_j, query2) in queries.iter().enumerate() {
             // Join
@@ -149,15 +162,15 @@ fn elim(queries: Vec<ASTNode>, _example: &Example, conn: &Connection) -> Vec<AST
             Ok(output) => {
                 // TODO: equivalence occurs if the values are the same, regardless of ordering
                 if !output_map.contains_key(&output) {
-                  // Check that this is a superset of the expected output
-                  // if !is_superset(&output, &example.1) {
-                  //     continue;
-                  // }
-                  output_map.insert(output.clone(), query.clone());
+                    // Check that this is a superset of the expected output
+                    // if !is_superset(&output, &example.1) {
+                    //     continue;
+                    // }
+                    output_map.insert(output.clone(), query.clone());
                 }
                 // TODO: heuristic for which query to keep
             }
-        } 
+        }
     }
 
     output_map.values().cloned().collect()
@@ -194,7 +207,6 @@ pub fn generate_abstract_queries(example: Example, _depth: i32, conn: &Connectio
 
     queries
 }
-
 
 #[cfg(test)]
 mod tests {

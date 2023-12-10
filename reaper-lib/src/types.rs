@@ -34,7 +34,7 @@ pub enum ASTNode {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ExprNode {
-    FieldName { name: String },
+    Field(Field),
     Int { value: isize },
 }
 
