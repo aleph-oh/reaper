@@ -24,6 +24,7 @@ pub enum ASTNode {
     }, // Note: Rel, Rel can be expressed as select _ from _, _ where True
     Table {
         name: String,
+        columns: Vec<String>,
     },
     Concat {
         table1: Rc<ASTNode>,

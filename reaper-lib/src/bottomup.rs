@@ -1,9 +1,48 @@
+use bitvec::field;
 use rusqlite::Connection;
 
 use crate::sql::*;
 use crate::types::*;
 use std::collections::HashMap;
 use std::rc::Rc;
+
+// Get fields from any ASTNode
+fn get_fields(node: &ASTNode) -> Vec<Field> {
+  match node {
+      ASTNode::Select { fields, table, .. } => {
+          let mut fields = match fields {
+              Some(fields) => fields.clone(),
+              None => get_fields(table),
+          };
+          fields.sort_by(|a, b| a.name.cmp(&b.name));
+          fields
+      }
+      ASTNode::Join { fields, table1, table2, .. } => {
+          let mut fields = match fields {
+              Some(fields) => fields.clone(),
+              None => {
+                  let mut fields1 = get_fields(table1);
+                  let mut fields2 = get_fields(table2);
+                  fields1.append(&mut fields2);
+                  fields1
+              }
+          };
+          fields.sort_by(|a, b| a.name.cmp(&b.name));
+          fields
+      }
+      ASTNode::Table { name, columns } => columns
+          .iter()
+          .map(|col| Field { name: col.clone(), table: name.clone() })
+          .collect(),
+      ASTNode::Concat { table1, table2 } => {
+          let mut fields1 = get_fields(table1);
+          let mut fields2 = get_fields(table2);
+          fields1.append(&mut fields2);
+          fields1.sort_by(|a, b| a.name.cmp(&b.name));
+          fields1
+      }
+  }
+}
 
 fn is_superset(result: &ConcTable, expected: &ConcTable) -> bool {
     // Check that the result contains all the columns of the expected
@@ -23,35 +62,68 @@ fn is_superset(result: &ConcTable, expected: &ConcTable) -> bool {
     true
 }
 
-fn field_combinations()
+fn powerset<T>(s: &[T]) -> Vec<Vec<T>> where T: Clone {
+  (1..2usize.pow(s.len() as u32)).map(|i| {
+       s.iter().enumerate().filter(|&(t, _)| (i >> t) % 2 == 1)
+                           .map(|(_, element)| element.clone())
+                           .collect()
+   }).collect()
+}   
+
+// Return every combination of fields possible
+// TODO: I don't actually want to be copying the fields everywhere...
+fn field_combinations(query: &ASTNode) -> Vec<Vec<Field>> {
+    let fields = get_fields(&query);
+    let mut field_combinations = powerset(&fields);
+    field_combinations
+}
+
+fn field_combinations_join(query1: &ASTNode, query2: &ASTNode) -> Vec<Vec<Field>> {
+  let fields1 = get_fields(&query1);
+  let fields2 = get_fields(&query2);
+
+  // Union the fields
+  let mut fields = fields1.clone();
+  for field in fields2.iter() {
+      if !fields.contains(field) {
+          fields.push(field.clone());
+      }
+  }
+
+  let mut field_combinations = powerset(&fields);
+  field_combinations
+}
 
 fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
     let mut new_queries = Vec::new();
-
-    // Get every combination of fields
-
 
     for (i, query) in queries.iter().enumerate() {
         // Identity
         new_queries.push(query.clone());
 
         // Select
-        let select = ASTNode::Select {
-            fields: None, // TODO: this should be a subset of the fields of the table
-            table: Rc::new(query.clone()),
-            pred: PredNode::True,
-        };
-        new_queries.push(select);
+        let field_powerset = field_combinations(query);
+        for fields in field_powerset.iter() {
+            let select = ASTNode::Select {
+                fields: Some(fields.clone()),
+                table: Rc::new(query.clone()),
+                pred: PredNode::True,
+            };
+            new_queries.push(select);
+        }        
 
         for (j, query2) in queries.iter().enumerate() {
             // Join
-            let join = ASTNode::Join {
-                fields: None, // TODO: this should be a subset of the fields of the table
-                table1: Rc::new(query.clone()),
-                table2: Rc::new(query2.clone()),
-                pred: PredNode::True,
-            };
-            new_queries.push(join);
+            let field_powerset = field_combinations_join(query, query2);
+            for fields in field_powerset.iter() {
+                let join = ASTNode::Join {
+                    fields: Some(fields.clone()),
+                    table1: Rc::new(query.clone()),
+                    table2: Rc::new(query2.clone()),
+                    pred: PredNode::True,
+                };
+                new_queries.push(join);
+            }
 
             // Concat
             let concat = ASTNode::Concat {
@@ -78,9 +150,9 @@ fn elim(queries: Vec<ASTNode>, example: &Example, conn: &Connection) -> Vec<ASTN
                 // TODO: equivalence occurs if the values are the same, regardless of ordering
                 if !output_map.contains_key(&output) {
                   // Check that this is a superset of the expected output
-                  if !is_superset(&output, &example.1) {
-                      continue;
-                  }
+                  // if !is_superset(&output, &example.1) {
+                  //     continue;
+                  // }
                   output_map.insert(output.clone(), query.clone());
                 }
                 // TODO: heuristic for which query to keep
@@ -97,6 +169,7 @@ fn initial_set(example: &Example) -> Vec<ASTNode> {
     for table in example.0.iter() {
         queries.push(ASTNode::Table {
             name: table.name.clone(),
+            columns: table.columns.clone(),
         });
     }
     queries

@@ -116,7 +116,7 @@ pub fn create_sql_query(query: ASTNode) -> String {
             sql.push_str(" ON ");
             sql.push_str(&create_sql_pred(pred));
         }
-        ASTNode::Table { name } => sql.push_str(&name),
+        ASTNode::Table { name, columns: _ } => sql.push_str(&name),
         ASTNode::Concat { table1, table2 } => {
             sql.push_str(&create_sql_query((*table1).clone()));
             sql.push_str(", ");
@@ -215,6 +215,7 @@ mod tests {
             fields: None,
             table: Rc::new(ASTNode::Table {
                 name: String::from("t1"),
+                columns: vec![String::from("a"), String::from("b")],
             }),
             pred: PredNode::True,
         };
@@ -239,6 +240,7 @@ mod tests {
                 ]),
                 table: Rc::new(ASTNode::Table {
                     name: String::from("users"),
+                    columns: vec![String::from("id"), String::from("role_id")],
                 }),
                 pred: PredNode::And {
                     left: Box::new(PredNode::Lt {
@@ -268,6 +270,7 @@ mod tests {
                 ]),
                 table: Rc::new(ASTNode::Table {
                     name: String::from("users"),
+                    columns: vec![String::from("id"), String::from("role_id")],
                 }),
                 pred: PredNode::And {
                     left: Box::new(PredNode::Lt {
@@ -324,6 +327,7 @@ mod tests {
             fields: None,
             table: Rc::new(ASTNode::Table {
                 name: String::from("t1"),
+                columns: vec![String::from("a"), String::from("b")],
             }),
             pred: PredNode::True,
         };
