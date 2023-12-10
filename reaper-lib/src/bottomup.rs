@@ -188,10 +188,10 @@ fn initial_set(example: &Example) -> Vec<ASTNode> {
     queries
 }
 
-pub fn generate_abstract_queries(example: Example, _depth: i32, conn: &Connection) -> Vec<ASTNode> {
+pub fn generate_abstract_queries(example: Example, depth: i32, conn: &Connection) -> Vec<ASTNode> {
     let mut queries = initial_set(&example);
 
-    for _ in 0..3 {
+    for _ in 0..depth {
         queries = grow(queries);
         println!("After grow");
         for query in queries.iter() {
