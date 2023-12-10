@@ -36,17 +36,17 @@ impl ASTNode {
     pub(crate) fn height(&self) -> usize {
         match self {
             ASTNode::Select {
-                fields,
+                fields: _,
                 table,
                 pred,
             } => table.height().max(pred.height()),
             ASTNode::Join {
-                fields,
+                fields: _,
                 table1,
                 table2,
                 pred,
             } => table1.height().max(table2.height()).max(pred.height()),
-            ASTNode::Table { name, columns } => 1,
+            ASTNode::Table { name: _, columns: _ } => 1,
             ASTNode::Concat { table1, table2 } => table1.height().max(table2.height()),
         }
     }

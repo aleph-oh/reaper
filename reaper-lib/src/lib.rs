@@ -6,7 +6,7 @@ pub mod sql;
 pub mod stun;
 pub mod types;
 
-fn query_rank(q: &types::ASTNode) -> isize {
+fn query_rank(_q: &types::ASTNode) -> isize {
     // TODO: implement this!
     todo!()
 }
