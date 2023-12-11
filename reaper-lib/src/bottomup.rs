@@ -150,7 +150,7 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
     new_queries
 }
 
-fn elim(queries: Vec<ASTNode>, _example: &Example, conn: &Connection) -> Vec<ASTNode> {
+fn elim(queries: Vec<ASTNode>, _example: &Example, conn: &Connection, is_final: bool) -> Vec<ASTNode> {
     // Map output to representative query
     let mut output_map = HashMap::new();
 
@@ -162,10 +162,11 @@ fn elim(queries: Vec<ASTNode>, _example: &Example, conn: &Connection) -> Vec<AST
             Ok(output) => {
                 // TODO: equivalence occurs if the values are the same, regardless of ordering
                 if !output_map.contains_key(&output) {
-                    // Check that this is a superset of the expected output
-                    // if !is_superset(&output, &example.1) {
-                    //     continue;
-                    // }
+                    
+                    if (is_final) {
+                        // Check that this is both a superset and the right structure
+                        todo!();
+                    }
                     output_map.insert(output.clone(), query.clone());
                 }
                 // TODO: heuristic for which query to keep
@@ -191,19 +192,21 @@ fn initial_set(example: &Example) -> Vec<ASTNode> {
 pub fn generate_abstract_queries(example: Example, depth: i32, conn: &Connection) -> Vec<ASTNode> {
     let mut queries = initial_set(&example);
 
-    for _ in 0..depth {
+    for d in 0..depth {
         queries = grow(queries);
         println!("After grow");
         for query in queries.iter() {
             println!("{:?}", query);
         }
-        queries = elim(queries, &example, conn);
+        queries = elim(queries, &example, conn, d == depth - 1);
 
         for query in queries.iter() {
             println!("After grow and elim");
             println!("{:?}", query);
         }
     }
+
+
 
     queries
 }
