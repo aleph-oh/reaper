@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 reaper-lib = { path = "reaper-lib" }
+rocket = "0.5.0"

@@ -1,7 +1,6 @@
 use crate::types::*;
 use rusqlite::{params, params_from_iter, Connection, Error, Result};
 
-
 pub fn create_table(input: &[ConcTable]) -> Result<Connection, Error> {
     let conn = Connection::open_in_memory()?;
 
