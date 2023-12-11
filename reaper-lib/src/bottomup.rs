@@ -6,24 +6,24 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 // Get fields from any ASTNode
-pub fn get_fields(node: &ASTNode) -> Vec<Field> {
+pub fn get_fields(node: &AST<()>) -> Vec<Field> {
     match node {
-        ASTNode::Select { fields, table, .. } => {
+        AST::Select { fields, table, .. } => {
             let mut fields = match fields {
-                Some(fields) => fields.clone(),
+                Some(fields) => fields.to_vec(),
                 None => get_fields(table),
             };
             fields.sort_by(|a, b| a.name.cmp(&b.name));
             fields
         }
-        ASTNode::Join {
+        AST::Join {
             fields,
             table1,
             table2,
             ..
         } => {
             let mut fields = match fields {
-                Some(fields) => fields.clone(),
+                Some(fields) => fields.to_vec(),
                 None => {
                     let mut fields1 = get_fields(table1);
                     let mut fields2 = get_fields(table2);
@@ -34,14 +34,15 @@ pub fn get_fields(node: &ASTNode) -> Vec<Field> {
             fields.sort_by(|a, b| a.name.cmp(&b.name));
             fields
         }
-        ASTNode::Table { name, columns } => columns
+        AST::Table { name, columns } => columns
             .iter()
             .map(|col| Field {
                 name: col.clone(),
                 table: name.clone(),
             })
-            .collect(),
-        ASTNode::Concat { table1, table2 } => {
+            .collect::<Vec<_>>()
+            .into(),
+        AST::Concat { table1, table2 } => {
             let mut fields1 = get_fields(table1);
             let mut fields2 = get_fields(table2);
             fields1.append(&mut fields2);
@@ -86,13 +87,13 @@ where
 
 // Return every combination of fields possible
 // TODO: I don't actually want to be copying the fields everywhere...
-fn field_combinations(query: &ASTNode) -> Vec<Vec<Field>> {
+fn field_combinations(query: &AST<()>) -> Vec<Vec<Field>> {
     let fields = get_fields(query);
 
     powerset(&fields)
 }
 
-fn field_combinations_join(query1: &ASTNode, query2: &ASTNode) -> Vec<Vec<Field>> {
+fn field_combinations_join(query1: &AST<()>, query2: &AST<()>) -> Vec<Vec<Field>> {
     let fields1 = get_fields(query1);
     let fields2 = get_fields(query2);
 
@@ -107,7 +108,7 @@ fn field_combinations_join(query1: &ASTNode, query2: &ASTNode) -> Vec<Vec<Field>
     powerset(&fields)
 }
 
-fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
+fn grow(queries: Vec<AST<()>>) -> Vec<AST<()>> {
     let mut new_queries = Vec::new();
 
     for (_i, query) in queries.iter().enumerate() {
@@ -117,10 +118,10 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
         // Select
         let field_powerset = field_combinations(query);
         for fields in field_powerset.iter() {
-            let select = ASTNode::Select {
-                fields: Some(fields.clone()),
-                table: Rc::new(query.clone()),
-                pred: PredNode::True,
+            let select = AST::Select {
+                fields: Some(Rc::from(&fields[..])),
+                table: Box::new(query.clone()),
+                pred: (),
             };
             new_queries.push(select);
         }
@@ -129,19 +130,19 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
             // Join
             let field_powerset = field_combinations_join(query, query2);
             for fields in field_powerset.iter() {
-                let join = ASTNode::Join {
-                    fields: Some(fields.clone()),
-                    table1: Rc::new(query.clone()),
-                    table2: Rc::new(query2.clone()),
-                    pred: PredNode::True,
+                let join = AST::Join {
+                    fields: Some(Rc::from(&fields[..])),
+                    table1: Box::new(query.clone()),
+                    table2: Box::new(query2.clone()),
+                    pred: (),
                 };
                 new_queries.push(join);
             }
 
             // Concat
-            let concat = ASTNode::Concat {
-                table1: Rc::new(query.clone()),
-                table2: Rc::new(query2.clone()),
+            let concat = AST::Concat {
+                table1: Box::new(query.clone()),
+                table2: Box::new(query2.clone()),
             };
             new_queries.push(concat);
         }
@@ -150,12 +151,12 @@ fn grow(queries: Vec<ASTNode>) -> Vec<ASTNode> {
     new_queries
 }
 
-fn elim(queries: Vec<ASTNode>, _example: &Example, conn: &Connection) -> Vec<ASTNode> {
+fn elim(queries: Vec<AST<()>>, _example: &Example, conn: &Connection) -> Vec<AST<()>> {
     // Map output to representative query
     let mut output_map = HashMap::new();
 
     for query in queries.iter() {
-        let output = eval(query, conn);
+        let output = eval_abstract(query, conn);
 
         match output {
             Err(_) => continue,
@@ -176,11 +177,11 @@ fn elim(queries: Vec<ASTNode>, _example: &Example, conn: &Connection) -> Vec<AST
     output_map.values().cloned().collect()
 }
 
-fn initial_set(example: &Example) -> Vec<ASTNode> {
+fn initial_set(example: &Example) -> Vec<AST<()>> {
     // Just return the set of all tables
     let mut queries = Vec::new();
     for table in example.0.iter() {
-        queries.push(ASTNode::Table {
+        queries.push(AST::Table {
             name: table.name.clone(),
             columns: table.columns.clone(),
         });
@@ -188,7 +189,7 @@ fn initial_set(example: &Example) -> Vec<ASTNode> {
     queries
 }
 
-pub fn generate_abstract_queries(example: Example, depth: i32, conn: &Connection) -> Vec<ASTNode> {
+pub fn generate_abstract_queries(example: Example, depth: i32, conn: &Connection) -> Vec<AST<()>> {
     let mut queries = initial_set(&example);
 
     for _ in 0..depth {
