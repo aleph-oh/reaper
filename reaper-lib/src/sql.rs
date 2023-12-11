@@ -40,7 +40,7 @@ pub fn create_table(input: &[ConcTable]) -> Result<Connection, Error> {
 }
 
 // NOTE: can we make query a reference? maybe there's a reason we can't?
-pub fn eval(query: &ASTNode, conn: &Connection) -> Result<ConcTable, Error> {
+pub fn eval(query: &AST<PredNode>, conn: &Connection) -> Result<ConcTable, Error> {
     let mut table = ConcTable {
         name: String::from(""),
         columns: Vec::new(),
@@ -85,10 +85,10 @@ fn create_fields_str(fields: Option<Vec<Field>>) -> String {
     }
 }
 
-pub fn create_sql_query(query: ASTNode) -> String {
+pub fn create_sql_query(query: AST<PredNode>) -> String {
     let mut sql = String::from("(");
     match query {
-        ASTNode::Select {
+        AST::Select {
             fields,
             table,
             pred,
@@ -100,7 +100,7 @@ pub fn create_sql_query(query: ASTNode) -> String {
             sql.push_str(" WHERE ");
             sql.push_str(&create_sql_pred(pred));
         }
-        ASTNode::Join {
+        AST::Join {
             fields,
             table1,
             table2,
@@ -115,8 +115,8 @@ pub fn create_sql_query(query: ASTNode) -> String {
             sql.push_str(" ON ");
             sql.push_str(&create_sql_pred(pred));
         }
-        ASTNode::Table { name, columns: _ } => sql.push_str(&name),
-        ASTNode::Concat { table1, table2 } => {
+        AST::Table { name, columns: _ } => sql.push_str(&name),
+        AST::Concat { table1, table2 } => {
             sql.push_str(&create_sql_query((*table1).clone()));
             sql.push_str(", ");
             sql.push_str(&create_sql_query((*table2).clone()));
@@ -210,9 +210,9 @@ mod tests {
 
     #[test]
     fn test_create_basic_sql_query() {
-        let query = ASTNode::Select {
+        let query = AST::Select {
             fields: None,
-            table: Rc::new(ASTNode::Table {
+            table: Rc::new(AST::Table {
                 name: String::from("t1"),
                 columns: vec![String::from("a"), String::from("b")],
             }),
@@ -224,9 +224,9 @@ mod tests {
 
     #[test]
     fn test_create_large_sql_query() {
-        let query = ASTNode::Join {
+        let query = AST::Join {
             fields: None,
-            table1: Rc::new(ASTNode::Select {
+            table1: Rc::new(AST::Select {
                 fields: Some(vec![
                     Field {
                         name: String::from("id"),
@@ -237,7 +237,7 @@ mod tests {
                         table: String::from("users"),
                     },
                 ]),
-                table: Rc::new(ASTNode::Table {
+                table: Rc::new(AST::Table {
                     name: String::from("users"),
                     columns: vec![String::from("id"), String::from("role_id")],
                 }),
@@ -258,7 +258,7 @@ mod tests {
                     }),
                 },
             }),
-            table2: Rc::new(ASTNode::Select {
+            table2: Rc::new(AST::Select {
                 fields: Some(vec![
                     Field {
                         name: String::from("id"),
@@ -269,7 +269,7 @@ mod tests {
                         table: String::from("users"),
                     },
                 ]),
-                table: Rc::new(ASTNode::Table {
+                table: Rc::new(AST::Table {
                     name: String::from("users"),
                     columns: vec![String::from("id"), String::from("role_id")],
                 }),
@@ -328,9 +328,9 @@ mod tests {
             values: vec![vec![1, 2], vec![3, 4]],
         };
 
-        let query = ASTNode::Select {
+        let query = AST::Select {
             fields: None,
-            table: Rc::new(ASTNode::Table {
+            table: Rc::new(AST::Table {
                 name: String::from("t1"),
                 columns: vec![String::from("a"), String::from("b")],
             }),
