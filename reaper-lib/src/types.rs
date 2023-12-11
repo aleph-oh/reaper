@@ -9,6 +9,7 @@ type Fields = Vec<Field>;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum AST<T> {
+    // TODO: since this is generic maybe they should just be Box again
     Select {
         /// NOTE: we should think about making this Rc. We don't want to
         /// deeply clone the entire Vec<Field>.
