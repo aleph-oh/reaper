@@ -7,7 +7,7 @@ use reaper_lib::sql::create_table;
 use reaper_lib::types::*;
 use rocket::fs::{relative, FileServer};
 use rocket::serde::json::Json;
-use rocket::serde::{Deserialize, Serialize};
+use rocket::serde::{Deserialize};
 
 #[derive(Deserialize)]
 struct Example {
@@ -26,7 +26,7 @@ fn synth(example: Json<Example>) {
             depth,
             &conn,
         );
-        println!("{}", "looking for predicate...");
+        println!("looking for predicate...");
         for query in queries.iter() {
             let predicate = reaper_lib::synthesize(
                 query,
