@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="stylesheet" href="chota.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Query Synthesizer</title>
+  <style>
+    body {
+      display: flex;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+    }
+
+    .column {
+      flex: 1;
+      padding: 20px;
+    }
+
+    #input-column,
+    #output-column,
+    #synthesize-column {
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      margin: 10px;
+      padding: 10px;
+    }
+
+    .table-container {
+      margin-bottom: 10px;
+    }
+
+    .code-block {
+      width: 100%;
+      height: 100%;
+      resize: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="input-column" class="column">
+    <h2>Input</h2>
+    <div id="input-tables">
+      <!-- Template for each input table -->
+      <div class="table-container" id="input-table-template">
+        <h3>t1</h3>
+        <table border="1">
+          <thead>
+            <tr>
+              <th><input type="text" placeholder="c0"></th>
+              <th><input type="text" placeholder="c1"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="number" placeholder="0"></td>
+              <td><input type="number" placeholder="0"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+              <!-- Add more columns as needed -->
+            </tr>
+            <tr>
+              <td><input type="number" placeholder="0"></td>
+              <td><input type="number" placeholder="0"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+              <!-- Add more columns as needed -->
+            </tr>
+            <!-- Add more rows as needed -->
+          </tbody>
+        </table>
+
+        <button onclick="addColumn(this)">Add Col</button>
+        <button onclick="removeColumn(this)">Del Col</button>
+        <button onclick="addRow(this)">Add Row</button>
+        </br>
+        <button onclick="addTable()">Add Table</button>
+        <button onclick="removeTable(this)">Remove Table</button>
+
+      </div>
+    </div>
+
+    <!-- Constants input box -->
+    <div>
+      <h3>Constants</h3>
+      <input type="text" id="constant-box" placeholder="Comma separated constants">
+    </div>
+  </div>
+
+  <div id="output-column" class="column">
+    <h2>Output</h2>
+    <div id="output-table">
+      <!-- Template for each input table -->
+      <div class="table-container" id="output-table-template">
+        <h3>out</h3>
+        <table border="1">
+          <thead>
+            <tr>
+              <th><input type="text" placeholder="c0"></th>
+              <th><input type="text" placeholder="c1"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="number" placeholder="0"></td>
+              <td><input type="number" placeholder="0"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+              <!-- Add more columns as needed -->
+            </tr>
+            <tr>
+              <td><input type="number" placeholder="0"></td>
+              <td><input type="number" placeholder="0"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+              <!-- Add more columns as needed -->
+            </tr>
+            <!-- Add more rows as needed -->
+          </tbody>
+        </table>
+
+        <button onclick="addColumn(this)">Add Col</button>
+        <button onclick="removeColumn(this)">Del Col</button>
+        <button onclick="addRow(this)">Add Row</button>
+      </div>
+    </div>
+
+    <!-- Synthesize button -->
+    <button onclick="callSynthesizer(this)">Synthesize!</button>
+  </div>
+
+  <div id="synthesize-column" class="column">
+    <h2>Synthesize</h2>
+    <code>
+            <textarea class="code-block" style="height: 75%;" readonly></textarea>
+     </code>
+  </div>
+
+  <script>
+    function addColumn(button) {
+      var table = button.closest('.table-container').querySelector('table');
+      var headerRow = table.querySelector('thead tr');
+      var bodyRows = table.querySelectorAll('tbody tr');
+
+      var newColumnIndex = headerRow.children.length;
+
+      // Add column header
+      var th = document.createElement('th');
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = 'c' + (newColumnIndex);
+      th.appendChild(input);
+
+      // Find last of headerRow
+      var last = headerRow.lastElementChild;
+      // Insert after last
+      last.after(th);
+
+      // Add column cells to each row
+      bodyRows.forEach(function (row, rowIndex) {
+        var td = document.createElement('td');
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.placeholder = '0';
+        td.appendChild(input);
+        
+        // Add new cell before the delete button
+        var last = row.lastElementChild;
+        row.insertBefore(td, last);
+      });
+
+
+    }
+
+    function removeRow(button) {
+      var row = button.closest('tr');
+      row.remove();
+    }
+
+    function addRow(button) {
+      var table = button.closest('.table-container').querySelector('table');
+      var headerRow = table.querySelector('thead tr');
+
+      var newRow = document.createElement('tr');
+
+      for (var i = 0; i < headerRow.children.length; i++) {
+        var td = document.createElement('td');
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.placeholder = '0';
+        td.appendChild(input);
+        newRow.appendChild(td);
+      }
+
+      // Add delete button for the new row
+      var td = document.createElement('td');
+      var button = document.createElement('button');
+      button.textContent = '-';
+      button.onclick = function () {
+        removeRow(newRow);
+      };
+      td.appendChild(button);
+      newRow.appendChild(td);
+
+      // Add new row before the last row
+      var last = table.querySelector('tbody tr:last-child');
+      last.after(newRow);
+    }
+
+    function removeColumn(button) {
+      var table = button.closest('.table-container').querySelector('table');
+      var headerRow = table.querySelector('thead tr');
+      var bodyRows = table.querySelectorAll('tbody tr');
+
+      // Remove column header
+      var last = headerRow.lastElementChild;
+      last.remove();
+
+      // Remove second to last column cells from each row
+      bodyRows.forEach(function (row) {
+        var secondToLast = row.children[row.children.length - 2];
+        secondToLast.remove();
+      });
+
+    }
+
+    function addTable() {
+      var table = document.getElementById('input-table-template').cloneNode(true);
+      table.removeAttribute('id');
+      table.style.display = 'block';
+
+      // Get number of tables
+      var tables = document.getElementById('input-tables').children.length;
+
+      // Set table header to t1, t2, t3, ...
+      table.querySelector('h3').textContent = 't' + (tables + 1);
+
+      document.getElementById('input-tables').appendChild(table);
+    }
+
+    function removeTable(button) {
+      var table = button.closest('.table-container');
+      table.remove();
+    }
+
+    function callSynthesizer(button) {
+      console.log('Synthesizing...');
+      /*
+      Create a JSON object with the following structure:
+      {
+        "input": [
+          {
+            "name": "t1",
+            "columns": ["c0", "c1"],
+            "values": [
+              [0, 0],
+              [0, 0]
+            ]
+          },
+          {
+            "name": "t2",
+            "columns": ["c0", "c1"],
+            "values": [
+              [0, 0],
+              [0, 0]
+            ]
+          }
+        ],
+        "output": {
+          "name": "out",
+          "columns": ["c0", "c1"],
+          "values": [
+            [0, 0],
+            [0, 0]
+          ]
+        },
+        "constants": [0, 1, 2]
+      }
+      */
+
+      // Get input tables
+      var inputTables = document.getElementById('input-tables').children;
+      for (var i = 0; i < inputTables.length; i++) {
+        var table = inputTables[i];
+        var name = table.querySelector('h3').textContent;
+        var columns = [];
+        var values = [];
+
+        // Get column names
+        var headerRow = table.querySelector('thead tr');
+        for (var j = 0; j < headerRow.children.length; j++) {
+          var input = headerRow.children[j].querySelector('input');
+          columns.push(input.value);
+        }
+
+        // Get values
+        var bodyRows = table.querySelectorAll('tbody tr');
+        for (var j = 0; j < bodyRows.length; j++) {
+          var row = bodyRows[j];
+          var rowValues = [];
+          for (var k = 0; k < row.children.length - 1; k++) {
+            var input = row.children[k].querySelector('input');
+            rowValues.push(parseInt(input.value));
+          }
+          values.push(rowValues);
+        }
+
+        // Create table object
+        var tableObject = {
+          name: name,
+          columns: columns,
+          values: values
+        };
+
+        // Add table object to input array
+        if (i == 0) {
+          var inputs = [tableObject];
+        } else {
+          inputs.push(tableObject);
+        }
+      }
+
+      // Get output table
+      var outputTable = document.getElementById('output-table');
+      var name = outputTable.querySelector('h3').textContent;
+      var columns = [];
+      var values = [];
+      
+      var headerRow = outputTable.querySelector('thead tr');
+      for (var j = 0; j < headerRow.children.length; j++) {
+        var input = headerRow.children[j].querySelector('input');
+        columns.push(input.value);
+      }
+
+      var bodyRows = outputTable.querySelectorAll('tbody tr');
+      for (var j = 0; j < bodyRows.length; j++) {
+        var row = bodyRows[j];
+        var rowValues = [];
+        for (var k = 0; k < row.children.length - 1; k++) {
+          var input = row.children[k].querySelector('input');
+          rowValues.push(parseInt(input.value));
+        }
+        values.push(rowValues);
+      }
+
+      // Create table object
+      var output = {
+        name: name,
+        columns: columns,
+        values: values
+      };
+
+      // Get constants
+      var constants = document.getElementById('constant-box').value.split(',');
+      constants = constants.map(function (constant) {
+        return parseInt(constant);
+      });
+
+      var data = {
+        input: inputs,
+        output: output,
+        constants: constants
+      };
+
+      console.log(data);
+
+      // Send data to server
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/synth', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify(data));
+    }
+
+  </script>
+
+</body>
+
+</html>
