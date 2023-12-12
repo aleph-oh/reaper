@@ -127,6 +127,7 @@ pub fn bvdfs(
             Ok(all)
         }
         AST::Table { name, columns: _ } => {
+            // TODO: match on the entry here manually to handle the error better
             let row_count = row_counts.entry(name.clone()).or_insert_with(|| {
                 let query = AST::Select {
                     fields: None,
