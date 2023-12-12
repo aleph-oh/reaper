@@ -19,7 +19,7 @@ struct Example {
 #[post("/synth", format = "json", data = "<example>")]
 fn synth(example: Json<Example>) {
     let conn = create_table(&example.input).unwrap();
-    for depth in 1..=4 {
+    for depth in 1..=3 {
         println!("Depth: {}", depth);
         let queries = generate_abstract_queries(
             (example.input.clone(), example.output.clone()),
