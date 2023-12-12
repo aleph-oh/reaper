@@ -57,7 +57,7 @@ fn is_valid(result: &ConcTable, expected: &ConcTable) -> bool {
     if result.columns.len() != expected.columns.len() {
         return false;
     }
-    
+
     // Check that the result contains all the columns of the expected
     for col in expected.columns.iter() {
         if !result.columns.contains(col) {
@@ -156,7 +156,12 @@ fn grow(queries: Vec<AST<()>>) -> Vec<AST<()>> {
     new_queries
 }
 
-fn elim(queries: Vec<AST<()>>, _example: &Example, conn: &Connection, is_final: bool) -> Vec<AST<()>> {
+fn elim(
+    queries: Vec<AST<()>>,
+    _example: &Example,
+    conn: &Connection,
+    is_final: bool,
+) -> Vec<AST<()>> {
     // Map output to representative query
     let mut output_map = HashMap::new();
 
@@ -168,7 +173,6 @@ fn elim(queries: Vec<AST<()>>, _example: &Example, conn: &Connection, is_final: 
             Ok(output) => {
                 // TODO: equivalence occurs if the values are the same, regardless of ordering
                 if !output_map.contains_key(&output) {
-                    
                     if (is_final) {
                         // Check that this is both a superset and the right structure
                         if !is_valid(&output, &_example.1) {
@@ -213,8 +217,6 @@ pub fn generate_abstract_queries(example: Example, depth: i32, conn: &Connection
             println!("{:?}", query);
         }
     }
-
-
 
     queries
 }
