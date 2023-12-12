@@ -52,7 +52,12 @@ pub fn get_fields(node: &AST<()>) -> Vec<Field> {
     }
 }
 
-fn is_superset(result: &ConcTable, expected: &ConcTable) -> bool {
+fn is_valid(result: &ConcTable, expected: &ConcTable) -> bool {
+    // Check that the result is the same shape as expected AND a superset
+    if result.columns.len() != expected.columns.len() {
+        return false;
+    }
+    
     // Check that the result contains all the columns of the expected
     for col in expected.columns.iter() {
         if !result.columns.contains(col) {
@@ -166,7 +171,9 @@ fn elim(queries: Vec<AST<()>>, _example: &Example, conn: &Connection, is_final: 
                     
                     if (is_final) {
                         // Check that this is both a superset and the right structure
-                        todo!();
+                        if !is_valid(&output, &_example.1) {
+                            continue;
+                        }
                     }
                     output_map.insert(output.clone(), query.clone());
                 }
