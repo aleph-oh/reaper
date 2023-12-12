@@ -12,9 +12,9 @@ pub mod sql;
 pub mod stun;
 pub mod types;
 
-fn query_rank(_q: &types::AST<types::PredNode>) -> isize {
-    // TODO: implement this!
-    todo!()
+fn query_rank(q: &types::AST<types::PredNode>) -> isize {
+    // TODO: do something more sophisticated
+    q.height() as isize
 }
 
 #[derive(Error, Debug)]
@@ -62,13 +62,14 @@ pub fn synthesize(
     // produce that value.
     let t = eval_abstract(q, conn)?;
     let target_bv = t.subset_bitvec(target);
-    let queries = bitvectors
+    let mut queries: Vec<_> = bitvectors
         .into_iter()
         .filter_map(|(bv, preds)| {
             if bv == target_bv {
+                let preds = preds.into_iter().collect::<Vec<_>>();
                 // TODO: with_predicates should probably accept an im::Vector instead.
                 let q = q
-                    .with_predicates(&preds.into_iter().collect::<Vec<_>>())
+                    .with_predicates(&preds)
                     .expect("query substitution failed!");
                 Some(q)
             } else {
@@ -76,7 +77,12 @@ pub fn synthesize(
             }
         })
         .collect();
-    Ok(queries)
+    if queries.len() == 0 {
+        Err(SynthesisError::NoQueriesFound)
+    } else {
+        queries.sort_by_key(query_rank);
+        Ok(queries)
+    }
 }
 
 #[cfg(test)]
