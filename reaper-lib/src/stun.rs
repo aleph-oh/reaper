@@ -95,7 +95,6 @@ impl AST<()> {
         &self,
         predicates: &'pred [PredNode],
     ) -> Result<(AST<PredNode>, &'pred [PredNode]), ()> {
-        // TODO: maybe we can't use Rc here since the type changes
         match self {
             AST::Select {
                 fields,
@@ -287,10 +286,7 @@ fn synthesize(
     // probably rank by some heuristic that captures complexity so we get the fastest possible evaluation.
 
     // First, evaluate the abstract query.
-    let subst_query = query
-        .with_predicates(&vec![PredNode::True; query.num_holes()])
-        .expect("expected num_holes to match number of holes");
-    let rows = crate::sql::eval(&subst_query, conn)?;
+    let rows = crate::sql::eval_abstract(&query, conn)?;
     // Now, phrase the concrete table as a bitvector.
     let target_intermediate = target.to_intermediate(&rows);
 

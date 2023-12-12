@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 pub mod bottomup;
+pub mod bvdfs;
 pub mod sql;
 pub mod stun;
 pub mod types;
