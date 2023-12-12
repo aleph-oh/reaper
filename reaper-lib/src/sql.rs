@@ -39,11 +39,30 @@ pub fn create_table(input: &[ConcTable]) -> Result<Connection, Error> {
     Ok(conn)
 }
 
+fn make_dummy_table(query: &AST<PredNode>) -> ConcTable {
+    match query {
+        AST::Select { table, .. } => make_dummy_table(&table),
+        AST::Join { table1, .. } => make_dummy_table(&table1),
+        AST::Table { name, columns } => ConcTable {
+            name: name.clone(),
+            columns: columns.clone(),
+            values: Vec::new(),
+        },
+        AST::Concat { table1, .. } => make_dummy_table(&table1),
+    }
+}
+
 pub fn eval_abstract(query: &AST<()>, conn: &Connection) -> Result<ConcTable, Error> {
     let query = query
         .with_predicates(&vec![PredNode::True; query.num_holes()])
         .expect("expected hole count to match");
-    eval(&query, conn)
+
+    let res = eval(&query, conn);
+
+    match res {
+        Ok(table) => Ok(table),
+        Err(_) => Ok(make_dummy_table(&query)),
+    }
 }
 
 // NOTE: can we make query a reference? maybe there's a reason we can't?

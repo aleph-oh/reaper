@@ -52,9 +52,15 @@ pub fn get_fields(node: &AST<()>) -> Vec<Field> {
 }
 
 fn is_valid(result: &ConcTable, expected: &ConcTable) -> bool {
-    // Check that the result is the same shape as expected AND a superset
+    // Check that the columns have the same names
     if result.columns.len() != expected.columns.len() {
         return false;
+    }
+
+    for (col1, col2) in result.columns.iter().zip(expected.columns.iter()) {
+        if col1 != col2 {
+            return false;
+        }
     }
 
     // Check that the result contains all the columns of the expected
@@ -206,9 +212,10 @@ pub fn generate_abstract_queries(example: Example, depth: i32, conn: &Connection
     for d in 0..depth {
         queries = grow(queries);
         queries = elim(queries, &example, conn, d == depth - 1);
-        for query in queries.iter() {
-            println!("{:?}", query);
-        }
+    }
+
+    for query in queries.iter() {
+      println!("{:?}", query);
     }
 
     queries
@@ -233,9 +240,6 @@ mod tests {
 
         let conn = create_table(&input).unwrap();
         let queries = generate_abstract_queries((input, output), 2, &conn);
-        for query in queries.iter() {
-            println!("{:?}", query);
-        }
 
         assert!(queries.len() > 0);
     }

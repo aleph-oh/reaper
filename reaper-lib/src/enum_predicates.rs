@@ -54,7 +54,6 @@ pub fn enum_and_group_predicates(
 ) -> Result<HashMap<bv::BitVec, Vec<PredNode>>, PredicateEnumerationError> {
     let t = crate::sql::eval_abstract(q, conn)?;
     let fields = crate::bottomup::get_fields(q);
-    println!("q = {:?}, fields = {:?}", q, fields);
     let primitives = enum_primitive_pred(constants, &fields);
     let mut rep: HashMap<_, Vec<PredNode>> = HashMap::new();
     primitives.into_iter().for_each(|p| {
@@ -78,5 +77,6 @@ pub fn enum_and_group_predicates(
     }
 
     // TODO: sort the Vec by simplicity?
+    println!("rep: {:?}", rep);
     Ok(rep)
 }
