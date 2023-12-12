@@ -77,7 +77,7 @@ pub fn synthesize(
             }
         })
         .collect();
-    if queries.len() == 0 {
+    if queries.is_empty() {
         Err(SynthesisError::NoQueriesFound)
     } else {
         queries.sort_by_key(query_rank);

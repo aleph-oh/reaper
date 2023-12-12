@@ -54,7 +54,7 @@ impl PredNode {
 pub(crate) fn predicate_vector(rows: &ConcTable, p: &PredNode) -> BitVec {
     let mut v = bv::bitvec![0; rows.values.len()];
     v.iter_mut().enumerate().for_each(|(i, mut x)| {
-        let env = Environment::from_row(&rows, i);
+        let env = Environment::from_row(rows, i);
         *x = p.eval2(&env);
     });
     v
@@ -62,11 +62,11 @@ pub(crate) fn predicate_vector(rows: &ConcTable, p: &PredNode) -> BitVec {
 
 fn predicate_vectors(rows: &ConcTable, predicates: &[PredNode]) -> Vec<BitVec> {
     predicates
-        .into_iter()
+        .iter()
         .map(|p| {
             let mut v = bv::bitvec![0; rows.values.len()];
             v.iter_mut().enumerate().for_each(|(i, mut x)| {
-                let env = Environment::from_row(&rows, i);
+                let env = Environment::from_row(rows, i);
                 *x = p.eval2(&env);
             });
             v
@@ -101,10 +101,10 @@ pub fn bvdfs(
             table,
             pred: _,
         } => {
-            let rows = crate::sql::eval_abstract(&q, conn)?;
+            let rows = crate::sql::eval_abstract(q, conn)?;
             let other_vectors = bvdfs(table, predicates, row_counts, conn)?;
             let all = predicates
-                .into_iter()
+                .iter()
                 .flat_map(|p| {
                     let v1 = predicate_vector(&rows, p);
                     other_vectors.iter().map(move |(v2, preds)| {
@@ -123,7 +123,7 @@ pub fn bvdfs(
             pred: _,
         } => {
             // TODO: use the cached lengths instead of doing an eval_abstract here
-            let rows = crate::sql::eval_abstract(&q, conn)?;
+            let rows = crate::sql::eval_abstract(q, conn)?;
             let left = bvdfs(table1, predicates, row_counts, conn)?;
             let right = bvdfs(table2, predicates, row_counts, conn)?;
             let all = predicates
@@ -137,7 +137,7 @@ pub fn bvdfs(
                         right.into_iter().map(move |(r, vr)| {
                             let v = cross(&l, &r) & v.clone();
                             let mut vector = vl.clone();
-                            vector.append(vr.clone());
+                            vector.append(vr);
                             vector.push_front(p.clone());
                             (v, vector)
                         })
@@ -173,7 +173,7 @@ pub fn bvdfs(
                         let mut v = l.clone();
                         v.append(&mut r);
                         let mut preds = vl.clone();
-                        preds.append(vr.clone());
+                        preds.append(vr);
                         (v, preds)
                     })
                 })

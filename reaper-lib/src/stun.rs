@@ -39,7 +39,7 @@ pub fn synthesize_pred<'a>(
     max_depth: usize,
 ) -> Result<Vec<PredNode>, PredicateSynthesisError> {
     println!("pre-synthesize");
-    let mut predicates = synthesize(&query, target, conn, fields, constants, max_depth)?;
+    let mut predicates = synthesize(query, target, conn, fields, constants, max_depth)?;
     predicates.sort_unstable_by_key(PredNode::height);
     println!("predicates = {:?}", predicates);
     Ok(predicates)
@@ -262,7 +262,7 @@ fn synthesize(
     max_depth: usize,
 ) -> Result<Vec<PredNode>, PredicateSynthesisError> {
     // First, evaluate the abstract query.
-    let rows = crate::sql::eval_abstract(&query, conn)?;
+    let rows = crate::sql::eval_abstract(query, conn)?;
     // Now, phrase the concrete table as a bitvector.
     let target_intermediate = target.to_intermediate(&rows);
 

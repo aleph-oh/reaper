@@ -40,8 +40,7 @@ pub fn get_fields(node: &AST<()>) -> Vec<Field> {
                 name: col.clone(),
                 table: name.clone(),
             })
-            .collect::<Vec<_>>()
-            .into(),
+            .collect::<Vec<_>>(),
         AST::Concat { table1, table2 } => {
             let mut fields1 = get_fields(table1);
             let mut fields2 = get_fields(table2);
@@ -173,7 +172,7 @@ fn elim(
             Ok(output) => {
                 // TODO: equivalence occurs if the values are the same, regardless of ordering
                 if !output_map.contains_key(&output) {
-                    if (is_final) {
+                    if is_final {
                         // Check that this is both a superset and the right structure
                         if !is_valid(&output, &_example.1) {
                             continue;

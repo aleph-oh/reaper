@@ -102,7 +102,7 @@ pub fn create_sql_query(query: &AST<PredNode>) -> String {
             format!(
                 "(SELECT {} FROM {} WHERE {})",
                 create_fields_str(fields.as_ref().map(|t| &t[..])),
-                create_sql_query(&table),
+                create_sql_query(table),
                 create_sql_pred(pred)
             )
         }

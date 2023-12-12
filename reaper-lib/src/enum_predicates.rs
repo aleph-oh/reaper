@@ -28,8 +28,8 @@ fn enum_primitive_pred(constants: &[isize], fields: &[Field]) -> Vec<PredNode> {
                 right: p2.clone(),
             })
             .chain(std::iter::once(PredNode::Lt {
-                left: p1.clone(),
-                right: p2.clone(),
+                left: p1,
+                right: p2,
             }))
             .chain(std::iter::once(PredNode::True))
         })
@@ -59,7 +59,7 @@ pub fn enum_and_group_predicates(
     primitives.into_iter().for_each(|p| {
         let predicate_vector = crate::bvdfs::predicate_vector(&t, &p);
         rep.entry(predicate_vector)
-            .or_insert_with(|| Vec::new())
+            .or_insert_with(Vec::new)
             .push(p);
     });
 
@@ -75,7 +75,7 @@ pub fn enum_and_group_predicates(
         enum_compound_pred(&representatives).for_each(|p| {
             let predicate_vector = crate::bvdfs::predicate_vector(&t, &p);
             rep.entry(predicate_vector)
-                .or_insert_with(|| Vec::new())
+                .or_insert_with(Vec::new)
                 .push(p);
         });
     }
