@@ -77,6 +77,5 @@ pub fn enum_and_group_predicates(
     }
 
     // TODO: sort the Vec by simplicity?
-    println!("rep: {:?}", rep);
     Ok(rep)
 }

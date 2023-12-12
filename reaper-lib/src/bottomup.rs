@@ -13,6 +13,13 @@ pub fn get_fields(node: &AST<()>) -> Vec<Field> {
                 Some(fields) => fields.to_vec(),
                 None => get_fields(table),
             };
+            // Append fields from table
+            let table_fields = get_fields(table);
+            for field in table_fields.iter() {
+                if !fields.contains(field) {
+                    fields.push(field.clone());
+                }
+            }
             fields.sort_by(|a, b| a.name.cmp(&b.name));
             fields
         }
@@ -99,7 +106,6 @@ where
 // TODO: I don't actually want to be copying the fields everywhere...
 fn field_combinations(query: &AST<()>) -> Vec<Vec<Field>> {
     let fields = get_fields(query);
-
     powerset(&fields)
 }
 
@@ -212,10 +218,6 @@ pub fn generate_abstract_queries(example: Example, depth: i32, conn: &Connection
     for d in 0..depth {
         queries = grow(queries);
         queries = elim(queries, &example, conn, d == depth - 1);
-    }
-
-    for query in queries.iter() {
-      println!("{:?}", query);
     }
 
     queries
