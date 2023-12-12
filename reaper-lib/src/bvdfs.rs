@@ -51,7 +51,7 @@ impl PredNode {
     }
 }
 
-fn predicate_vector(rows: &ConcTable, p: &PredNode) -> BitVec {
+pub(crate) fn predicate_vector(rows: &ConcTable, p: &PredNode) -> BitVec {
     let mut v = bv::bitvec![0; rows.values.len()];
     v.iter_mut().enumerate().for_each(|(i, mut x)| {
         let env = Environment::from_row(&rows, i);

@@ -38,8 +38,10 @@ pub fn synthesize_pred<'a>(
     constants: &[isize],
     max_depth: usize,
 ) -> Result<Vec<PredNode>, PredicateSynthesisError> {
+    println!("pre-synthesize");
     let mut predicates = synthesize(&query, target, conn, fields, constants, max_depth)?;
     predicates.sort_unstable_by_key(PredNode::height);
+    println!("predicates = {:?}", predicates);
     Ok(predicates)
 }
 
@@ -259,32 +261,6 @@ fn synthesize(
     constants: &[isize],
     max_depth: usize,
 ) -> Result<Vec<PredNode>, PredicateSynthesisError> {
-    // The Scythe paper implements predicate search as a top-down search where we try to generate predicates (simplest-first)
-    // such that they produce the expected output. It is essentially an exhaustive search. This leaves a few questions:
-    //  - How do we group predicates? We probably want to map a given query result to all the predicates that produce
-    //  that query result.
-    //      - How do we do this pruning before concrete evaluation to reduce the number of concrete evaluations?
-    //  - This predicate grouping also doesn't handle the case where a query returns too many entries.
-    // TODO: how do we limit the amount of time the synthesizer spends?
-    //  - limit the depth and the time together, limiting time is a little
-    //   less invasive
-    // TODO: how do we parallelize this nicely?
-    //  - rayon, spawns / parallel iteration have a nice / reasonable API
-    //
-    // Idea: represent the expected table as its own bitvector relative to the examples.
-    // This is done by evaluating the abstract query to a table, comparing the rows present in it
-    // to the rows present in the expected table, and setting the corresponding bits.
-    //
-    // We then group predicates by what bits in the intermediate table they set, mapping bit-vectors to
-    // the predicates that yield them, and then we search for a predicate that gives the same bit-vector
-    // as the output once we're done generating this large table. Optimization: don't store bit-vectors that
-    // are subsets of the target intermediate table T_out: we only have conjunction so we can never use those to
-    // produce the bitvector for T_out.
-    //
-    // We also want to pick a representative of each predicate class so that way we can evaluate queries
-    // for a given bitvector if we have to (when do we have to?). To pick good representatives, we should
-    // probably rank by some heuristic that captures complexity so we get the fastest possible evaluation.
-
     // First, evaluate the abstract query.
     let rows = crate::sql::eval_abstract(&query, conn)?;
     // Now, phrase the concrete table as a bitvector.

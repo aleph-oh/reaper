@@ -2,6 +2,7 @@ use thiserror::Error;
 
 pub mod bottomup;
 pub mod bvdfs;
+pub mod enum_predicates;
 pub mod sql;
 pub mod stun;
 pub mod types;
