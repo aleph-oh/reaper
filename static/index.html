@@ -51,22 +51,40 @@
         <table border="1">
           <thead>
             <tr>
-              <th><input type="text" placeholder="c0"></th>
-              <th><input type="text" placeholder="c1"></th>
+              <th><input type="text" value="ID"></th>
+              <th><input type="text" value="Status"></th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><input type="number" placeholder="0"></td>
-              <td><input type="number" placeholder="0"></td>
+              <td><input type="number" value="0"></td>
+              <td><input type="number" value="1"></td>
               <td><button onclick="removeRow(this)">-</button></td>
-              <!-- Add more columns as needed -->
             </tr>
             <tr>
-              <td><input type="number" placeholder="0"></td>
-              <td><input type="number" placeholder="0"></td>
+              <td><input type="number" value="1"></td>
+              <td><input type="number" value="1"></td>
               <td><button onclick="removeRow(this)">-</button></td>
-              <!-- Add more columns as needed -->
+            </tr>
+            <tr>
+              <td><input type="number" value="2"></td>
+              <td><input type="number" value="0"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+            </tr>
+            <tr>
+              <td><input type="number" value="3"></td>
+              <td><input type="number" value="2"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+            </tr>
+            <tr>
+              <td><input type="number" value="4"></td>
+              <td><input type="number" value="1"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+            </tr>
+            <tr>
+              <td><input type="number" value="5"></td>
+              <td><input type="number" value="2"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
             </tr>
             <!-- Add more rows as needed -->
           </tbody>
@@ -80,12 +98,65 @@
         <button onclick="removeTable(this)">Remove Table</button>
 
       </div>
+
+      <div class="table-container" style="display: block;">
+        <h3>t2</h3>
+        <table border="1">
+          <thead>
+            <tr>
+              <th><input type="text" value="ID"></th>
+              <th><input type="text" value="Status"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="number" value="0"></td>
+              <td><input type="number" value="1"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+            </tr>
+            <tr>
+              <td><input type="number" value="1"></td>
+              <td><input type="number" value="1"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+            </tr>
+            <tr>
+              <td><input type="number" value="2"></td>
+              <td><input type="number" value="0"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+            </tr>
+            <tr>
+              <td><input type="number" value="3"></td>
+              <td><input type="number" value="2"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+            </tr>
+            <tr>
+              <td><input type="number" value="4"></td>
+              <td><input type="number" value="1"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+            </tr>
+            <tr>
+              <td><input type="number" value="5"></td>
+              <td><input type="number" value="2"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+            </tr>
+            <!-- Add more rows as needed -->
+          </tbody>
+        </table>
+
+        <button onclick="addColumn(this)">Add Col</button>
+        <button onclick="removeColumn(this)">Del Col</button>
+        <button onclick="addRow(this)">Add Row</button>
+        <br>
+        <button onclick="addTable()">Add Table</button>
+        <button onclick="removeTable(this)">Remove Table</button>
+
+      </div>
     </div>
 
     <!-- Constants input box -->
     <div>
       <h3>Constants</h3>
-      <input type="text" id="constant-box" placeholder="Comma separated constants">
+      <input type="text" id="constant-box" value="2">
     </div>
   </div>
 
@@ -98,20 +169,26 @@
         <table border="1">
           <thead>
             <tr>
-              <th><input type="text" placeholder="c0"></th>
-              <th><input type="text" placeholder="c1"></th>
+              <th><input type="text" value="ID"></th>
+              <th><input type="text" value="Grade"></th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><input type="number" placeholder="0"></td>
-              <td><input type="number" placeholder="0"></td>
+              <td><input type="number" value="0"></td>
+              <td><input type="number" value="92"></td>
               <td><button onclick="removeRow(this)">-</button></td>
               <!-- Add more columns as needed -->
             </tr>
             <tr>
-              <td><input type="number" placeholder="0"></td>
-              <td><input type="number" placeholder="0"></td>
+              <td><input type="number" value="1"></td>
+              <td><input type="number" value="87"></td>
+              <td><button onclick="removeRow(this)">-</button></td>
+              <!-- Add more columns as needed -->
+            </tr>
+            <tr>
+              <td><input type="number" value="4"></td>
+              <td><input type="number" value="99"></td>
               <td><button onclick="removeRow(this)">-</button></td>
               <!-- Add more columns as needed -->
             </tr>
@@ -163,7 +240,7 @@
         input.type = 'number';
         input.placeholder = '0';
         td.appendChild(input);
-        
+
         // Add new cell before the delete button
         var last = row.lastElementChild;
         row.insertBefore(td, last);
@@ -325,7 +402,7 @@
       var name = outputTable.querySelector('h3').textContent;
       var columns = [];
       var values = [];
-      
+
       var headerRow = outputTable.querySelector('thead tr');
       for (var j = 0; j < headerRow.children.length; j++) {
         var input = headerRow.children[j].querySelector('input');

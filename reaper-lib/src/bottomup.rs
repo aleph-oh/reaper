@@ -151,7 +151,7 @@ fn grow(queries: Vec<AST<()>>) -> Vec<AST<()>> {
     new_queries
 }
 
-fn elim(queries: Vec<ASTNode>, _example: &Example, conn: &Connection, is_final: bool) -> Vec<ASTNode> {
+fn elim(queries: Vec<AST<()>>, _example: &Example, conn: &Connection, is_final: bool) -> Vec<AST<()>> {
     // Map output to representative query
     let mut output_map = HashMap::new();
 
