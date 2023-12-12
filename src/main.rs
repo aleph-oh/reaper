@@ -21,11 +21,13 @@ struct Example {
 fn synth(example: Json<Example>) {
     let conn = create_table(&example.input).unwrap();
     for depth in 1..=4 {
+        println!("Depth: {}", depth);
         let queries = generate_abstract_queries(
             (example.input.clone(), example.output.clone()),
             depth,
             &conn,
         );
+        println!("{}", "looking for predicate...");
         for query in queries.iter() {
             let predicate = synthesize_pred(
                 query,
@@ -35,6 +37,7 @@ fn synth(example: Json<Example>) {
                 &example.constants,
                 3,
             );
+            println!("Predicate: {:?}", predicate);
             if predicate.is_ok() {
                 println!("Found predicate: {:?}", predicate);
                 return;
