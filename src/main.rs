@@ -2,9 +2,8 @@
 extern crate rocket;
 extern crate serde;
 
-use reaper_lib::bottomup::{get_fields, generate_abstract_queries};
+use reaper_lib::bottomup::{generate_abstract_queries, get_fields};
 use reaper_lib::sql::create_table;
-use reaper_lib::stun::synthesize_pred;
 use reaper_lib::types::*;
 use rocket::fs::{relative, FileServer};
 use rocket::serde::json::Json;
@@ -29,14 +28,15 @@ fn synth(example: Json<Example>) {
         );
         println!("{}", "looking for predicate...");
         for query in queries.iter() {
-            let predicate = synthesize_pred(
+            let predicate = reaper_lib::synthesize(
                 query,
                 &example.output,
-                &conn,
-                &get_fields(query),
                 &example.constants,
+                &get_fields(query),
                 3,
-            );
+                &conn,
+            )
+            .map(|ps| ps.first().expect("vec must not be empty").clone());
             println!("Predicate: {:?}", predicate);
             if predicate.is_ok() {
                 println!("Found predicate: {:?}", predicate);

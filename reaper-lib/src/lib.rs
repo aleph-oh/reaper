@@ -59,7 +59,7 @@ pub fn synthesize(
         .collect();
     let bitvectors = bvdfs::bvdfs(q, &representatives, &mut HashMap::new(), conn)?;
     // TODO: make the return type of bvdfs less stupid. probably should be a hashmap from bitvecs to all predicate vectors that
-    // produce that value.
+    // produce that value. Without that change, it's not really better to make a HashMap out of these since we could just iterate.
     let t = eval_abstract(q, conn)?;
     let target_bv = t.subset_bitvec(target);
     let mut queries: Vec<_> = bitvectors
