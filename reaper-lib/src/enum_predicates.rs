@@ -1,7 +1,7 @@
 use crate::types::{ExprNode, Field, PredNode, AST};
 use bitvec::prelude as bv;
 use itertools::Itertools;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -46,6 +46,41 @@ fn enum_compound_pred(predicates: &[PredNode]) -> impl Iterator<Item = PredNode>
         })
 }
 
+fn all_fields(q: &AST<()>) -> Vec<Field> {
+    match q {
+        AST::Select {
+            fields,
+            table,
+            pred,
+        } => all_fields(table),
+        AST::Join {
+            fields,
+            table1,
+            table2,
+            pred,
+        } => all_fields(table1)
+            .into_iter()
+            .chain(all_fields(table2).into_iter())
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect(),
+        AST::Table { name, columns } => columns
+            .iter()
+            .map(|c| Field {
+                table: name.clone(),
+                name: c.clone(),
+            })
+            .collect(),
+
+        AST::Concat { table1, table2 } => all_fields(table1)
+            .into_iter()
+            .chain(all_fields(table2).into_iter())
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect(),
+    }
+}
+
 pub fn enum_and_group_predicates(
     q: &AST<()>,
     constants: &[isize],
@@ -53,7 +88,7 @@ pub fn enum_and_group_predicates(
     conn: &rusqlite::Connection,
 ) -> Result<HashMap<bv::BitVec, Vec<PredNode>>, PredicateEnumerationError> {
     let t = crate::sql::eval_abstract(q, conn)?;
-    let fields = crate::bottomup::get_fields(q);
+    let fields = all_fields(q);
     let primitives = enum_primitive_pred(constants, &fields);
     let mut rep: HashMap<_, Vec<PredNode>> = HashMap::new();
     primitives.into_iter().for_each(|p| {

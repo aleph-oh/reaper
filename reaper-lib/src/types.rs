@@ -2,7 +2,7 @@ extern crate serde;
 
 use std::{fmt, rc::Rc};
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub struct Field {
     pub name: String,
     pub table: String,
