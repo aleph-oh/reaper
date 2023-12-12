@@ -15,17 +15,15 @@ struct Example {
 }
 
 #[post("/synth", format = "json", data = "<example>")]
-fn new_user(example: Json<Example>) {
-    println!("Received example: {:?}", example.constants);
-}
-
-#[get("/synth2")]
-fn test() {
-    println!("{}", "hi jay");
+fn synth(example: Json<Example>) {
+    println!("{:?}", example.input);
+    println!("{:?}", example.output);
+    println!("{:?}", example.constants);
+    todo!();
 }
 
 #[launch]
 fn rocket() -> _ {
     rocket::build().mount("/", FileServer::from(relative!("/static")))
-        .mount("/", routes![new_user, test])
+        .mount("/", routes![synth])
 }
