@@ -1,6 +1,6 @@
 extern crate serde;
 
-use std::rc::Rc;
+use std::{fmt, rc::Rc};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Field {
@@ -60,6 +60,15 @@ pub enum ExprNode {
     Int { value: isize },
 }
 
+impl fmt::Display for ExprNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExprNode::Field(Field { table, name }) => write!(f, "{}.{}", table, name),
+            ExprNode::Int { value } => write!(f, "{}", value),
+        }
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum PredNode {
     True,
@@ -75,6 +84,17 @@ pub enum PredNode {
         left: Box<PredNode>,
         right: Box<PredNode>,
     },
+}
+
+impl fmt::Display for PredNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PredNode::True => write!(f, "True"),
+            PredNode::Lt { left, right } => write!(f, "{} < {}", left, right),
+            PredNode::Eq { left, right } => write!(f, "{} == {}", left, right),
+            PredNode::And { left, right } => write!(f, "({}) && ({})", left, right),
+        }
+    }
 }
 
 impl ExprNode {
