@@ -1,3 +1,5 @@
+extern crate serde;
+
 use std::rc::Rc;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -96,7 +98,7 @@ impl PredNode {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, serde::Deserialize)]
 pub struct ConcTable {
     pub name: String,
     pub columns: Vec<String>,
