@@ -49,18 +49,17 @@ fn enum_compound_pred(predicates: &[PredNode]) -> impl Iterator<Item = PredNode>
 pub fn enum_and_group_predicates(
     q: &AST<()>,
     constants: &[isize],
-    fields: &[Field],
     max_depth: usize,
     conn: &rusqlite::Connection,
 ) -> Result<HashMap<bv::BitVec, Vec<PredNode>>, PredicateEnumerationError> {
     let t = crate::sql::eval_abstract(q, conn)?;
-    let primitives = enum_primitive_pred(constants, fields);
+    let fields = crate::bottomup::get_fields(q);
+    println!("q = {:?}, fields = {:?}", q, fields);
+    let primitives = enum_primitive_pred(constants, &fields);
     let mut rep: HashMap<_, Vec<PredNode>> = HashMap::new();
     primitives.into_iter().for_each(|p| {
         let predicate_vector = crate::bvdfs::predicate_vector(&t, &p);
-        rep.entry(predicate_vector)
-            .or_insert_with(Vec::new)
-            .push(p);
+        rep.entry(predicate_vector).or_insert_with(Vec::new).push(p);
     });
 
     for _ in 1..max_depth {
@@ -74,9 +73,7 @@ pub fn enum_and_group_predicates(
             .collect::<Vec<_>>();
         enum_compound_pred(&representatives).for_each(|p| {
             let predicate_vector = crate::bvdfs::predicate_vector(&t, &p);
-            rep.entry(predicate_vector)
-                .or_insert_with(Vec::new)
-                .push(p);
+            rep.entry(predicate_vector).or_insert_with(Vec::new).push(p);
         });
     }
 

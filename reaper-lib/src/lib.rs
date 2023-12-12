@@ -44,20 +44,10 @@ pub fn synthesize(
     q: &types::AST<()>,
     target: &types::ConcTable,
     constants: &[isize],
-    fields: &[types::Field],
     max_predicate_depth: usize,
     conn: &rusqlite::Connection,
 ) -> Result<Vec<types::AST<types::PredNode>>, SynthesisError> {
-    let predicates = enum_and_group_predicates(q, constants, fields, max_predicate_depth, conn)?;
-    let representatives: Vec<_> = predicates
-        .values()
-        .map(|v| {
-            v.first()
-                .expect("each vec in predicates must not be empty!")
-        })
-        .cloned()
-        .collect();
-    let bitvectors = bvdfs::bvdfs(q, &representatives, &mut HashMap::new(), conn)?;
+    let bitvectors = bvdfs::bvdfs(q, constants, max_predicate_depth, &mut HashMap::new(), conn)?;
     // TODO: make the return type of bvdfs less stupid. probably should be a hashmap from bitvecs to all predicate vectors that
     // produce that value. Without that change, it's not really better to make a HashMap out of these since we could just iterate.
     let t = eval_abstract(q, conn)?;

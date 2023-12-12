@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::types::{ConcTable, ExprNode, Field, PredNode, AST};
+use crate::{
+    enum_predicates,
+    types::{ConcTable, ExprNode, Field, PredNode, AST},
+};
 use bitvec::{prelude as bv, vec::BitVec};
 use thiserror::Error;
 
@@ -14,17 +17,17 @@ impl ConcTable {
 pub enum BVDFSError {
     #[error("error evaluating query in SQLite")]
     SQLiteError(#[from] rusqlite::Error),
+    #[error("error generating predicates")]
+    PredicateEnumeration(#[from] enum_predicates::PredicateEnumerationError),
 }
+
+#[derive(Debug)]
 struct Environment(HashMap<String, isize>);
 impl Environment {
     fn from_row(table: &ConcTable, i: usize) -> Self {
         let names = &table.columns;
         let v = &table.values[i];
-        let map: HashMap<_, _> = names
-            .iter()
-            .map(|name| format!("{}.{}", table.name, name))
-            .zip(v.iter().copied())
-            .collect();
+        let map: HashMap<_, _> = names.iter().cloned().zip(v.iter().copied()).collect();
         Self(map)
     }
 }
@@ -91,10 +94,22 @@ fn cross(v1: &bv::BitSlice, v2: &bv::BitSlice) -> bv::BitVec {
 /// applied recursively, so the same construction should be used when substituting predicate nodes back into the tree.
 pub fn bvdfs(
     q: &AST<()>,
-    predicates: &[PredNode],
+    constants: &[isize],
+    max_predicate_depth: usize,
     row_counts: &mut HashMap<String, usize>,
     conn: &rusqlite::Connection,
 ) -> Result<Vec<(bv::BitVec, im::Vector<PredNode>)>, BVDFSError> {
+    // TODO: we only look over the representatives
+    let predicates =
+        crate::enum_predicates::enum_and_group_predicates(q, constants, max_predicate_depth, conn)?;
+    let representatives: Vec<_> = predicates
+        .values()
+        .map(|v| {
+            v.first()
+                .expect("each vec in predicates must not be empty!")
+        })
+        .cloned()
+        .collect();
     match q {
         AST::Select {
             fields: _,
@@ -102,8 +117,8 @@ pub fn bvdfs(
             pred: _,
         } => {
             let rows = crate::sql::eval_abstract(q, conn)?;
-            let other_vectors = bvdfs(table, predicates, row_counts, conn)?;
-            let all = predicates
+            let other_vectors = bvdfs(table, constants, max_predicate_depth - 1, row_counts, conn)?;
+            let all = representatives
                 .iter()
                 .flat_map(|p| {
                     let v1 = predicate_vector(&rows, p);
@@ -124,9 +139,9 @@ pub fn bvdfs(
         } => {
             // TODO: use the cached lengths instead of doing an eval_abstract here
             let rows = crate::sql::eval_abstract(q, conn)?;
-            let left = bvdfs(table1, predicates, row_counts, conn)?;
-            let right = bvdfs(table2, predicates, row_counts, conn)?;
-            let all = predicates
+            let left = bvdfs(table1, constants, max_predicate_depth, row_counts, conn)?;
+            let right = bvdfs(table2, constants, max_predicate_depth, row_counts, conn)?;
+            let all = representatives
                 .iter()
                 .flat_map(|p| {
                     let v = predicate_vector(&rows, p);
@@ -164,8 +179,8 @@ pub fn bvdfs(
             Ok(vec![(bv::bitvec![1; row_count], im::Vector::new())])
         }
         AST::Concat { table1, table2 } => {
-            let left = bvdfs(table1, predicates, row_counts, conn)?;
-            let right = bvdfs(table2, predicates, row_counts, conn)?;
+            let left = bvdfs(table1, constants, max_predicate_depth, row_counts, conn)?;
+            let right = bvdfs(table2, constants, max_predicate_depth, row_counts, conn)?;
             let all = left
                 .iter()
                 .flat_map(|(l, vl)| {
