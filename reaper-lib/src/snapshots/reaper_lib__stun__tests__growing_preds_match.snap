@@ -31,12 +31,18 @@ expression: grown
             },
         },
         right: Lt {
-            left: FieldName {
-                name: "hello",
-            },
-            right: FieldName {
-                name: "world",
-            },
+            left: Field(
+                Field {
+                    name: "hello",
+                    table: "t",
+                },
+            ),
+            right: Field(
+                Field {
+                    name: "world",
+                    table: "t",
+                },
+            ),
         },
     },
     And {
@@ -52,12 +58,18 @@ expression: grown
     },
     And {
         left: Lt {
-            left: FieldName {
-                name: "hello",
-            },
-            right: FieldName {
-                name: "world",
-            },
+            left: Field(
+                Field {
+                    name: "hello",
+                    table: "t",
+                },
+            ),
+            right: Field(
+                Field {
+                    name: "world",
+                    table: "t",
+                },
+            ),
         },
         right: Lt {
             left: Int {
@@ -70,30 +82,48 @@ expression: grown
     },
     And {
         left: Lt {
-            left: FieldName {
-                name: "hello",
-            },
-            right: FieldName {
-                name: "world",
-            },
+            left: Field(
+                Field {
+                    name: "hello",
+                    table: "t",
+                },
+            ),
+            right: Field(
+                Field {
+                    name: "world",
+                    table: "t",
+                },
+            ),
         },
         right: Lt {
-            left: FieldName {
-                name: "hello",
-            },
-            right: FieldName {
-                name: "world",
-            },
+            left: Field(
+                Field {
+                    name: "hello",
+                    table: "t",
+                },
+            ),
+            right: Field(
+                Field {
+                    name: "world",
+                    table: "t",
+                },
+            ),
         },
     },
     And {
         left: Lt {
-            left: FieldName {
-                name: "hello",
-            },
-            right: FieldName {
-                name: "world",
-            },
+            left: Field(
+                Field {
+                    name: "hello",
+                    table: "t",
+                },
+            ),
+            right: Field(
+                Field {
+                    name: "world",
+                    table: "t",
+                },
+            ),
         },
         right: True,
     },
