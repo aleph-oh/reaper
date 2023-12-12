@@ -51,6 +51,15 @@ impl PredNode {
     }
 }
 
+fn predicate_vector(rows: &ConcTable, p: &PredNode) -> BitVec {
+    let mut v = bv::bitvec![0; rows.values.len()];
+    v.iter_mut().enumerate().for_each(|(i, mut x)| {
+        let env = Environment::from_row(&rows, i);
+        *x = p.eval2(&env);
+    });
+    v
+}
+
 fn predicate_vectors(rows: &ConcTable, predicates: &[PredNode]) -> Vec<BitVec> {
     predicates
         .into_iter()
@@ -88,21 +97,17 @@ pub fn bvdfs(
             pred: _,
         } => {
             let rows = crate::sql::eval_abstract(&q, conn)?;
-            let predicate_vectors: Vec<_> = predicates
-                .into_iter()
-                .map(|p| {
-                    let mut v = bv::bitvec![0; rows.values.len()];
-                    v.iter_mut().enumerate().for_each(|(i, mut x)| {
-                        let env = Environment::from_row(&rows, i);
-                        *x = p.eval2(&env);
-                    });
-                    v
-                })
-                .collect();
             let other_vectors = bvdfs(table, predicates, row_counts, conn)?;
-            let all = predicate_vectors
+            let all = predicates
                 .into_iter()
-                .flat_map(|v1| other_vectors.iter().map(move |v2| v1.clone() & v2.clone()))
+                .flat_map(|p| {
+                    let v1 = predicate_vector(&rows, p);
+                    other_vectors.iter().map(move |(v2, preds)| {
+                        let mut preds = preds.clone();
+                        preds.push_front(p.clone());
+                        (v1.clone() & v2.clone(), preds)
+                    })
+                })
                 .collect::<Vec<_>>();
             Ok(all)
         }
@@ -114,14 +119,24 @@ pub fn bvdfs(
         } => {
             // TODO: use the cached lengths instead of doing an eval_abstract here
             let rows = crate::sql::eval_abstract(&q, conn)?;
-            let predicate_vectors = predicate_vectors(&rows, predicates);
             let left = bvdfs(table1, predicates, row_counts, conn)?;
             let right = bvdfs(table2, predicates, row_counts, conn)?;
-            let all = predicate_vectors
+            let all = predicates
                 .iter()
-                .flat_map(|v| {
-                    left.iter()
-                        .flat_map(|l| right.iter().map(|r| cross(l, r) & v.clone()))
+                .flat_map(|p| {
+                    let v = predicate_vector(&rows, p);
+                    let right = right.clone();
+                    left.clone().into_iter().flat_map(move |(l, vl)| {
+                        let v = v.clone();
+                        let right = right.clone();
+                        right.into_iter().map(move |(r, vr)| {
+                            let v = cross(&l, &r) & v.clone();
+                            let mut vector = vl.clone();
+                            vector.append(vr.clone());
+                            vector.push_front(p.clone());
+                            (v, vector)
+                        })
+                    })
                 })
                 .collect();
             Ok(all)
@@ -141,18 +156,20 @@ pub fn bvdfs(
                     rows.values.len()
                 }
             };
-            Ok(vec![bv::bitvec![1; row_count]])
+            Ok(vec![(bv::bitvec![1; row_count], im::Vector::new())])
         }
         AST::Concat { table1, table2 } => {
             let left = bvdfs(table1, predicates, row_counts, conn)?;
             let right = bvdfs(table2, predicates, row_counts, conn)?;
             let all = left
                 .iter()
-                .flat_map(|l| {
-                    right.iter().cloned().map(|mut r| {
-                        let mut l = l.clone();
-                        l.append(&mut r);
-                        l
+                .flat_map(|(l, vl)| {
+                    right.iter().cloned().map(|(mut r, vr)| {
+                        let mut v = l.clone();
+                        v.append(&mut r);
+                        let mut preds = vl.clone();
+                        preds.append(vr.clone());
+                        (v, preds)
                     })
                 })
                 .collect();

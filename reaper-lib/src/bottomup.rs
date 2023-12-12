@@ -151,7 +151,12 @@ fn grow(queries: Vec<AST<()>>) -> Vec<AST<()>> {
     new_queries
 }
 
-fn elim(queries: Vec<ASTNode>, _example: &Example, conn: &Connection, is_final: bool) -> Vec<ASTNode> {
+fn elim(
+    queries: Vec<AST<()>>,
+    _example: &Example,
+    conn: &Connection,
+    is_final: bool,
+) -> Vec<AST<()>> {
     // Map output to representative query
     let mut output_map = HashMap::new();
 
@@ -163,7 +168,6 @@ fn elim(queries: Vec<ASTNode>, _example: &Example, conn: &Connection, is_final: 
             Ok(output) => {
                 // TODO: equivalence occurs if the values are the same, regardless of ordering
                 if !output_map.contains_key(&output) {
-                    
                     if (is_final) {
                         // Check that this is both a superset and the right structure
                         todo!();
@@ -206,8 +210,6 @@ pub fn generate_abstract_queries(example: Example, depth: i32, conn: &Connection
             println!("{:?}", query);
         }
     }
-
-
 
     queries
 }
