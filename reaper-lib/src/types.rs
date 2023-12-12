@@ -5,22 +5,18 @@ pub struct Field {
     pub name: String,
     pub table: String,
 }
-type Fields = Vec<Field>;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum AST<T> {
-    // TODO: since this is generic maybe they should just be Box again
     Select {
-        /// NOTE: we should think about making this Rc. We don't want to
-        /// deeply clone the entire Vec<Field>.
-        fields: Option<Fields>,
-        table: Rc<AST<T>>,
+        fields: Option<Rc<[Field]>>,
+        table: Box<AST<T>>,
         pred: T,
     },
     Join {
-        fields: Option<Fields>,
-        table1: Rc<AST<T>>,
-        table2: Rc<AST<T>>,
+        fields: Option<Rc<[Field]>>,
+        table1: Box<AST<T>>,
+        table2: Box<AST<T>>,
         pred: T,
     }, // Note: Rel, Rel can be expressed as select _ from _, _ where True
     Table {
@@ -28,8 +24,8 @@ pub enum AST<T> {
         columns: Vec<String>,
     },
     Concat {
-        table1: Rc<AST<T>>,
-        table2: Rc<AST<T>>,
+        table1: Box<AST<T>>,
+        table2: Box<AST<T>>,
     },
 }
 

@@ -82,7 +82,7 @@ fn run_unless_stopped<T>(f: impl FnOnce() -> T, stopper: &AtomicBool) -> Option<
 
 impl AST<()> {
     /// [t.num_holes()] returns the number of holes in the AST.
-    fn num_holes(&self) -> usize {
+    pub(crate) fn num_holes(&self) -> usize {
         match self {
             AST::Select { table, .. } => table.num_holes() + 1,
             AST::Join { table1, table2, .. } => table1.num_holes() + table2.num_holes() + 1,
@@ -91,23 +91,22 @@ impl AST<()> {
         }
     }
 
-    fn with_predicates_aux(
+    fn with_predicates_aux<'pred>(
         &self,
-        predicates: &[PredNode],
-    ) -> Result<(AST<PredNode>, &[PredNode]), ()> {
-        // TODO: maybe we can't use Rc here since the type changes
+        predicates: &'pred [PredNode],
+    ) -> Result<(AST<PredNode>, &'pred [PredNode]), ()> {
         match self {
             AST::Select {
                 fields,
                 table,
-                pred,
+                pred: _,
             } => {
                 let (pred, predicates) = predicates.split_first().ok_or(())?;
                 let (table, predicates) = table.with_predicates_aux(predicates)?;
                 Ok((
                     AST::Select {
-                        fields: fields.clone(),
-                        table: Rc::new(table),
+                        fields: fields.as_ref().map(Rc::clone),
+                        table: Box::new(table),
                         pred: pred.clone(),
                     },
                     predicates,
@@ -117,16 +116,16 @@ impl AST<()> {
                 fields,
                 table1,
                 table2,
-                pred,
+                pred: _,
             } => {
                 let (pred, predicates) = predicates.split_first().ok_or(())?;
                 let (table1, predicates) = table1.with_predicates_aux(predicates)?;
                 let (table2, predicates) = table2.with_predicates_aux(predicates)?;
                 Ok((
                     AST::Join {
-                        fields: fields.clone(),
-                        table1: Rc::new(table1),
-                        table2: Rc::new(table2),
+                        fields: fields.as_ref().map(Rc::clone),
+                        table1: Box::new(table1),
+                        table2: Box::new(table2),
                         pred: pred.clone(),
                     },
                     predicates,
@@ -144,8 +143,8 @@ impl AST<()> {
                 let (table2, predicates) = table2.with_predicates_aux(predicates)?;
                 Ok((
                     AST::Concat {
-                        table1: Rc::new(table1),
-                        table2: Rc::new(table2),
+                        table1: Box::new(table1),
+                        table2: Box::new(table2),
                     },
                     predicates,
                 ))
@@ -153,7 +152,7 @@ impl AST<()> {
         }
     }
 
-    fn with_predicates(&self, predicates: &[PredNode]) -> Result<AST<PredNode>, ()> {
+    pub(crate) fn with_predicates(&self, predicates: &[PredNode]) -> Result<AST<PredNode>, ()> {
         Ok(self.with_predicates_aux(predicates)?.0)
     }
 
@@ -287,7 +286,7 @@ fn synthesize(
     // probably rank by some heuristic that captures complexity so we get the fastest possible evaluation.
 
     // First, evaluate the abstract query.
-    let rows = crate::sql::eval(&query, conn)?;
+    let rows = crate::sql::eval_abstract(&query, conn)?;
     // Now, phrase the concrete table as a bitvector.
     let target_intermediate = target.to_intermediate(&rows);
 
