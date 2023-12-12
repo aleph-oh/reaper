@@ -76,6 +76,10 @@ pub fn enum_and_group_predicates(
         });
     }
 
+    for preds in rep.values() {
+        println!("{}", preds.first().unwrap());
+    }
+
     // TODO: sort the Vec by simplicity?
     Ok(rep)
 }

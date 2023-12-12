@@ -32,49 +32,41 @@ impl Environment {
     }
 }
 impl ExprNode {
-    fn eval2(&self, env: &Environment) -> isize {
+    fn eval2(&self, env: &Environment) -> Option<isize> {
         match self {
-            ExprNode::Field(Field { table: _, name }) => *env
-                .0
-                .get(name)
-                .expect("well-formed predicate implies a value in env"),
-            ExprNode::Int { value } => *value,
+            ExprNode::Field(Field { table: _, name }) => env.0.get(name).copied(),
+            ExprNode::Int { value } => Some(*value),
         }
     }
 }
 
 impl PredNode {
-    fn eval2(&self, env: &Environment) -> bool {
+    fn eval2(&self, env: &Environment) -> Option<bool> {
         match self {
-            PredNode::True => true,
-            PredNode::Lt { left, right } => left.eval2(env) < right.eval2(env),
-            PredNode::Eq { left, right } => left.eval2(env) == right.eval2(env),
-            PredNode::And { left, right } => left.eval2(env) && right.eval2(env),
+            PredNode::True => Some(true),
+            PredNode::Lt { left, right } => left
+                .eval2(env)
+                .and_then(|left| right.eval2(env).map(|right| left < right)),
+            PredNode::Eq { left, right } => left
+                .eval2(env)
+                .and_then(|left| right.eval2(env).map(|right| left == right)),
+            PredNode::And { left, right } => left
+                .eval2(env)
+                .and_then(|left| right.eval2(env).map(|right| left && right)),
         }
     }
 }
 
 pub(crate) fn predicate_vector(rows: &ConcTable, p: &PredNode) -> BitVec {
     let mut v = bv::bitvec![0; rows.values.len()];
-    v.iter_mut().enumerate().for_each(|(i, mut x)| {
+    for (i, mut x) in v.iter_mut().enumerate() {
         let env = Environment::from_row(rows, i);
-        *x = p.eval2(&env);
-    });
+        match p.eval2(&env) {
+            Some(b) => *x = b,
+            None => return bv::bitvec![0; rows.values.len()],
+        }
+    }
     v
-}
-
-fn predicate_vectors(rows: &ConcTable, predicates: &[PredNode]) -> Vec<BitVec> {
-    predicates
-        .iter()
-        .map(|p| {
-            let mut v = bv::bitvec![0; rows.values.len()];
-            v.iter_mut().enumerate().for_each(|(i, mut x)| {
-                let env = Environment::from_row(rows, i);
-                *x = p.eval2(&env);
-            });
-            v
-        })
-        .collect()
 }
 
 fn cross(v1: &bv::BitSlice, v2: &bv::BitSlice) -> bv::BitVec {
