@@ -171,6 +171,8 @@ fn create_sql_expr(expr: &ExprNode) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::Field;
+    use std::rc::Rc;
 
     #[test]
     fn test_create_table() {
@@ -217,7 +219,7 @@ mod tests {
     fn test_create_basic_sql_query() {
         let query = AST::Select {
             fields: None,
-            table: Rc::new(AST::Table {
+            table: Box::new(AST::Table {
                 name: String::from("t1"),
                 columns: vec![String::from("a"), String::from("b")],
             }),
@@ -231,8 +233,8 @@ mod tests {
     fn test_create_large_sql_query() {
         let query = AST::Join {
             fields: None,
-            table1: Rc::new(AST::Select {
-                fields: Some(vec![
+            table1: Box::new(AST::Select {
+                fields: Some(Rc::from(vec![
                     Field {
                         name: String::from("id"),
                         table: String::from("users"),
@@ -241,8 +243,8 @@ mod tests {
                         name: String::from("role_id"),
                         table: String::from("users"),
                     },
-                ]),
-                table: Rc::new(AST::Table {
+                ])),
+                table: Box::new(AST::Table {
                     name: String::from("users"),
                     columns: vec![String::from("id"), String::from("role_id")],
                 }),
@@ -263,8 +265,8 @@ mod tests {
                     }),
                 },
             }),
-            table2: Rc::new(AST::Select {
-                fields: Some(vec![
+            table2: Box::new(AST::Select {
+                fields: Some(Rc::from(vec![
                     Field {
                         name: String::from("id"),
                         table: String::from("users"),
@@ -273,8 +275,8 @@ mod tests {
                         name: String::from("role_id"),
                         table: String::from("users"),
                     },
-                ]),
-                table: Rc::new(AST::Table {
+                ])),
+                table: Box::new(AST::Table {
                     name: String::from("users"),
                     columns: vec![String::from("id"), String::from("role_id")],
                 }),
@@ -307,9 +309,7 @@ mod tests {
             },
         };
 
-        let expected = String::from("(SELECT * FROM (SELECT id, role_id FROM (users) WHERE (((id) < (10)) AND ((role_id) = (1)))) JOIN (SELECT id, role_id FROM (users) WHERE (((id) < (10)) AND ((role_id) = (2)))) ON ((users.id) = (users.id)))");
-        let actual = create_sql_query(&query);
-        assert_eq!(actual, expected);
+        insta::assert_debug_snapshot!(create_sql_query(&query), @r###""(SELECT * FROM (SELECT id, role_id FROM (users) WHERE (((users.id) < (10)) AND ((users.role_id) = (1)))) JOIN (SELECT id, role_id FROM (users) WHERE (((users.id) < (10)) AND ((users.role_id) = (2)))) ON ((users.id) = (users.id)))""###);
     }
 
     #[test]
@@ -335,7 +335,7 @@ mod tests {
 
         let query = AST::Select {
             fields: None,
-            table: Rc::new(AST::Table {
+            table: Box::new(AST::Table {
                 name: String::from("t1"),
                 columns: vec![String::from("a"), String::from("b")],
             }),

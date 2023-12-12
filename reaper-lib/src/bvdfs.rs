@@ -84,6 +84,11 @@ fn cross(v1: &bv::BitSlice, v2: &bv::BitSlice) -> bv::BitVec {
     v
 }
 
+/// [bvdfs(q, predicates, row_counts, conn)] returns all bitvectors and the corresponding predicate sequence that generated the bitvector,
+/// where the predicate pool is drawn from predicates, for the given abstract query.
+///
+/// All bitvectors should be of the same arity. The ordering of the predicates is the parent node first, then all left children, then all right children,
+/// applied recursively, so the same construction should be used when substituting predicate nodes back into the tree.
 pub fn bvdfs(
     q: &AST<()>,
     predicates: &[PredNode],

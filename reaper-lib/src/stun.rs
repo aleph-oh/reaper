@@ -360,8 +360,9 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::stun::Environment;
-    use crate::types::{ExprNode, PredNode};
+    use crate::types::{ExprNode, Field, PredNode};
     use proptest::strategy::Strategy;
+    use std::rc::Rc;
 
     use super::grow;
 
@@ -417,8 +418,19 @@ mod tests {
     #[test]
     fn base_preds_match() {
         // TODO: it's kinda weird here that we don't include the base predicates.
-        let base_preds =
-            super::base_preds(&[String::from("hello"), String::from("world")], &[1, -1]);
+        let base_preds = super::base_preds(
+            &[
+                Field {
+                    name: String::from("hello"),
+                    table: String::from("t1"),
+                },
+                Field {
+                    name: String::from("world"),
+                    table: String::from("t2"),
+                },
+            ],
+            &[1, -1],
+        );
         insta::assert_debug_snapshot!(base_preds);
     }
 

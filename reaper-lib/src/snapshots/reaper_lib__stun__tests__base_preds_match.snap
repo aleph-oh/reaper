@@ -5,113 +5,173 @@ expression: base_preds
 [
     True,
     Eq {
-        left: FieldName {
-            name: "hello",
-        },
-        right: FieldName {
-            name: "hello",
-        },
+        left: Field(
+            Field {
+                name: "hello",
+                table: "t1",
+            },
+        ),
+        right: Field(
+            Field {
+                name: "hello",
+                table: "t1",
+            },
+        ),
     },
     Lt {
-        left: FieldName {
-            name: "hello",
-        },
-        right: FieldName {
-            name: "hello",
-        },
+        left: Field(
+            Field {
+                name: "hello",
+                table: "t1",
+            },
+        ),
+        right: Field(
+            Field {
+                name: "hello",
+                table: "t1",
+            },
+        ),
     },
     Eq {
-        left: FieldName {
-            name: "hello",
-        },
-        right: FieldName {
-            name: "world",
-        },
+        left: Field(
+            Field {
+                name: "hello",
+                table: "t1",
+            },
+        ),
+        right: Field(
+            Field {
+                name: "world",
+                table: "t2",
+            },
+        ),
     },
     Lt {
-        left: FieldName {
-            name: "hello",
-        },
-        right: FieldName {
-            name: "world",
-        },
+        left: Field(
+            Field {
+                name: "hello",
+                table: "t1",
+            },
+        ),
+        right: Field(
+            Field {
+                name: "world",
+                table: "t2",
+            },
+        ),
     },
     Eq {
-        left: FieldName {
-            name: "hello",
-        },
+        left: Field(
+            Field {
+                name: "hello",
+                table: "t1",
+            },
+        ),
         right: Int {
             value: 1,
         },
     },
     Lt {
-        left: FieldName {
-            name: "hello",
-        },
+        left: Field(
+            Field {
+                name: "hello",
+                table: "t1",
+            },
+        ),
         right: Int {
             value: 1,
         },
     },
     Eq {
-        left: FieldName {
-            name: "hello",
-        },
+        left: Field(
+            Field {
+                name: "hello",
+                table: "t1",
+            },
+        ),
         right: Int {
             value: -1,
         },
     },
     Lt {
-        left: FieldName {
-            name: "hello",
-        },
+        left: Field(
+            Field {
+                name: "hello",
+                table: "t1",
+            },
+        ),
         right: Int {
             value: -1,
         },
     },
     Eq {
-        left: FieldName {
-            name: "world",
-        },
-        right: FieldName {
-            name: "world",
-        },
+        left: Field(
+            Field {
+                name: "world",
+                table: "t2",
+            },
+        ),
+        right: Field(
+            Field {
+                name: "world",
+                table: "t2",
+            },
+        ),
     },
     Lt {
-        left: FieldName {
-            name: "world",
-        },
-        right: FieldName {
-            name: "world",
-        },
+        left: Field(
+            Field {
+                name: "world",
+                table: "t2",
+            },
+        ),
+        right: Field(
+            Field {
+                name: "world",
+                table: "t2",
+            },
+        ),
     },
     Eq {
-        left: FieldName {
-            name: "world",
-        },
+        left: Field(
+            Field {
+                name: "world",
+                table: "t2",
+            },
+        ),
         right: Int {
             value: 1,
         },
     },
     Lt {
-        left: FieldName {
-            name: "world",
-        },
+        left: Field(
+            Field {
+                name: "world",
+                table: "t2",
+            },
+        ),
         right: Int {
             value: 1,
         },
     },
     Eq {
-        left: FieldName {
-            name: "world",
-        },
+        left: Field(
+            Field {
+                name: "world",
+                table: "t2",
+            },
+        ),
         right: Int {
             value: -1,
         },
     },
     Lt {
-        left: FieldName {
-            name: "world",
-        },
+        left: Field(
+            Field {
+                name: "world",
+                table: "t2",
+            },
+        ),
         right: Int {
             value: -1,
         },
