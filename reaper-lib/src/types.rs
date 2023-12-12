@@ -7,49 +7,49 @@ pub struct Field {
     pub name: String,
     pub table: String,
 }
-type Fields = Vec<Field>;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub enum ASTNode {
+pub enum AST<T> {
     Select {
-        /// NOTE: we should think about making this Rc. We don't want to
-        /// deeply clone the entire Vec<Field>.
-        fields: Option<Fields>,
-        table: Rc<ASTNode>,
-        pred: PredNode,
+        fields: Option<Rc<[Field]>>,
+        table: Box<AST<T>>,
+        pred: T,
     },
     Join {
-        fields: Option<Fields>,
-        table1: Rc<ASTNode>,
-        table2: Rc<ASTNode>,
-        pred: PredNode,
+        fields: Option<Rc<[Field]>>,
+        table1: Box<AST<T>>,
+        table2: Box<AST<T>>,
+        pred: T,
     }, // Note: Rel, Rel can be expressed as select _ from _, _ where True
     Table {
         name: String,
         columns: Vec<String>,
     },
     Concat {
-        table1: Rc<ASTNode>,
-        table2: Rc<ASTNode>,
+        table1: Box<AST<T>>,
+        table2: Box<AST<T>>,
     },
 }
 
-impl ASTNode {
+impl AST<PredNode> {
     pub(crate) fn height(&self) -> usize {
         match self {
-            ASTNode::Select {
+            AST::Select {
                 fields: _,
                 table,
                 pred,
             } => table.height().max(pred.height()),
-            ASTNode::Join {
+            AST::Join {
                 fields: _,
                 table1,
                 table2,
                 pred,
             } => table1.height().max(table2.height()).max(pred.height()),
-            ASTNode::Table { name: _, columns: _ } => 1,
-            ASTNode::Concat { table1, table2 } => table1.height().max(table2.height()),
+            AST::Table {
+                name: _,
+                columns: _,
+            } => 1,
+            AST::Concat { table1, table2 } => table1.height().max(table2.height()),
         }
     }
 }

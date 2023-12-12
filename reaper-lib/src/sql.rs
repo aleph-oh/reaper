@@ -39,15 +39,22 @@ pub fn create_table(input: &[ConcTable]) -> Result<Connection, Error> {
     Ok(conn)
 }
 
+pub fn eval_abstract(query: &AST<()>, conn: &Connection) -> Result<ConcTable, Error> {
+    let query = query
+        .with_predicates(&vec![PredNode::True; query.num_holes()])
+        .expect("expected hole count to match");
+    eval(&query, conn)
+}
+
 // NOTE: can we make query a reference? maybe there's a reason we can't?
-pub fn eval(query: &ASTNode, conn: &Connection) -> Result<ConcTable, Error> {
+pub fn eval(query: &AST<PredNode>, conn: &Connection) -> Result<ConcTable, Error> {
     let mut table = ConcTable {
         name: String::from(""),
         columns: Vec::new(),
         values: Vec::new(),
     };
 
-    let query_str = create_sql_query((*query).clone());
+    let query_str = create_sql_query(query);
 
     // TODO: there should be a better way of doing this, but remove the paren
     // at the beginning and end of the query string
@@ -69,7 +76,7 @@ pub fn eval(query: &ASTNode, conn: &Connection) -> Result<ConcTable, Error> {
     Ok(table)
 }
 
-fn create_fields_str(fields: Option<Vec<Field>>) -> String {
+fn create_fields_str(fields: Option<&[Field]>) -> String {
     match fields {
         Some(fields) => {
             let mut sql = String::from("");
@@ -85,48 +92,46 @@ fn create_fields_str(fields: Option<Vec<Field>>) -> String {
     }
 }
 
-pub fn create_sql_query(query: ASTNode) -> String {
-    let mut sql = String::from("(");
+pub fn create_sql_query(query: &AST<PredNode>) -> String {
     match query {
-        ASTNode::Select {
+        AST::Select {
             fields,
             table,
             pred,
         } => {
-            sql.push_str("SELECT ");
-            sql.push_str(&create_fields_str(fields));
-            sql.push_str(" FROM ");
-            sql.push_str(&create_sql_query((*table).clone()));
-            sql.push_str(" WHERE ");
-            sql.push_str(&create_sql_pred(pred));
+            format!(
+                "(SELECT {} FROM {} WHERE {})",
+                create_fields_str(fields.as_ref().map(|t| &t[..])),
+                create_sql_query(&table),
+                create_sql_pred(pred)
+            )
         }
-        ASTNode::Join {
+        AST::Join {
             fields,
             table1,
             table2,
             pred,
         } => {
-            sql.push_str("SELECT ");
-            sql.push_str(&create_fields_str(fields));
-            sql.push_str(" FROM ");
-            sql.push_str(&create_sql_query((*table1).clone()));
-            sql.push_str(" JOIN ");
-            sql.push_str(&create_sql_query((*table2).clone()));
-            sql.push_str(" ON ");
-            sql.push_str(&create_sql_pred(pred));
+            format!(
+                "(SELECT {} FROM {} JOIN {} ON {})",
+                create_fields_str(fields.as_ref().map(|t| &t[..])),
+                create_sql_query(table1),
+                create_sql_query(table2),
+                create_sql_pred(pred)
+            )
         }
-        ASTNode::Table { name, columns: _ } => sql.push_str(&name),
-        ASTNode::Concat { table1, table2 } => {
-            sql.push_str(&create_sql_query((*table1).clone()));
-            sql.push_str(", ");
-            sql.push_str(&create_sql_query((*table2).clone()));
+        AST::Table { name, columns: _ } => format!("({})", name),
+        AST::Concat { table1, table2 } => {
+            format!(
+                "({}, {})",
+                create_sql_query(table1),
+                create_sql_query(table2)
+            )
         }
     }
-    sql.push(')');
-    sql
 }
 
-fn create_sql_pred(pred: PredNode) -> String {
+fn create_sql_pred(pred: &PredNode) -> String {
     match pred {
         PredNode::True => String::from("1"),
         PredNode::Lt { left, right } => {
@@ -147,16 +152,16 @@ fn create_sql_pred(pred: PredNode) -> String {
         }
         PredNode::And { left, right } => {
             let mut sql = String::from("(");
-            sql.push_str(&create_sql_pred(*left));
+            sql.push_str(&create_sql_pred(left));
             sql.push_str(" AND ");
-            sql.push_str(&create_sql_pred(*right));
+            sql.push_str(&create_sql_pred(right));
             sql.push(')');
             sql
         }
     }
 }
 
-fn create_sql_expr(expr: ExprNode) -> String {
+fn create_sql_expr(expr: &ExprNode) -> String {
     match expr {
         ExprNode::Field(field) => format!("({}.{})", field.table, field.name),
         ExprNode::Int { value } => format!("({})", value),
@@ -210,9 +215,9 @@ mod tests {
 
     #[test]
     fn test_create_basic_sql_query() {
-        let query = ASTNode::Select {
+        let query = AST::Select {
             fields: None,
-            table: Rc::new(ASTNode::Table {
+            table: Rc::new(AST::Table {
                 name: String::from("t1"),
                 columns: vec![String::from("a"), String::from("b")],
             }),
@@ -224,9 +229,9 @@ mod tests {
 
     #[test]
     fn test_create_large_sql_query() {
-        let query = ASTNode::Join {
+        let query = AST::Join {
             fields: None,
-            table1: Rc::new(ASTNode::Select {
+            table1: Rc::new(AST::Select {
                 fields: Some(vec![
                     Field {
                         name: String::from("id"),
@@ -237,7 +242,7 @@ mod tests {
                         table: String::from("users"),
                     },
                 ]),
-                table: Rc::new(ASTNode::Table {
+                table: Rc::new(AST::Table {
                     name: String::from("users"),
                     columns: vec![String::from("id"), String::from("role_id")],
                 }),
@@ -258,7 +263,7 @@ mod tests {
                     }),
                 },
             }),
-            table2: Rc::new(ASTNode::Select {
+            table2: Rc::new(AST::Select {
                 fields: Some(vec![
                     Field {
                         name: String::from("id"),
@@ -269,7 +274,7 @@ mod tests {
                         table: String::from("users"),
                     },
                 ]),
-                table: Rc::new(ASTNode::Table {
+                table: Rc::new(AST::Table {
                     name: String::from("users"),
                     columns: vec![String::from("id"), String::from("role_id")],
                 }),
@@ -303,7 +308,7 @@ mod tests {
         };
 
         let expected = String::from("(SELECT * FROM (SELECT id, role_id FROM (users) WHERE (((id) < (10)) AND ((role_id) = (1)))) JOIN (SELECT id, role_id FROM (users) WHERE (((id) < (10)) AND ((role_id) = (2)))) ON ((users.id) = (users.id)))");
-        let actual = create_sql_query(query);
+        let actual = create_sql_query(&query);
         assert_eq!(actual, expected);
     }
 
@@ -328,9 +333,9 @@ mod tests {
             values: vec![vec![1, 2], vec![3, 4]],
         };
 
-        let query = ASTNode::Select {
+        let query = AST::Select {
             fields: None,
-            table: Rc::new(ASTNode::Table {
+            table: Rc::new(AST::Table {
                 name: String::from("t1"),
                 columns: vec![String::from("a"), String::from("b")],
             }),

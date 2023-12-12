@@ -31,18 +31,13 @@ pub enum PredicateSynthesisError {
 /// If the query is not a valid abstract query, an error is returned.
 /// If no predicate is found, the returned Vec is empty.
 pub fn synthesize_pred<'a>(
-    query: &ASTNode,
+    query: &AST<()>,
     target: &ConcTable,
     conn: &rusqlite::Connection,
     fields: &[Field],
     constants: &[isize],
     max_depth: usize,
 ) -> Result<Vec<PredNode>, PredicateSynthesisError> {
-    let query = match AbstractQuery::try_from(query) {
-        Ok(query) => query,
-        Err(InvalidQueryError::TooFewPredicates) => return Ok(vec![PredNode::True]),
-        Err(e) => return Err(e)?,
-    };
     let mut predicates = synthesize(&query, target, conn, fields, constants, max_depth)?;
     predicates.sort_unstable_by_key(PredNode::height);
     Ok(predicates)
@@ -85,69 +80,83 @@ fn run_unless_stopped<T>(f: impl FnOnce() -> T, stopper: &AtomicBool) -> Option<
     }
 }
 
-impl ASTNode {
+impl AST<()> {
     /// [t.num_holes()] returns the number of holes in the AST.
-    fn num_holes(&self) -> usize {
+    pub(crate) fn num_holes(&self) -> usize {
         match self {
-            ASTNode::Select { table, .. } => table.num_holes() + 1,
-            ASTNode::Join { table1, table2, .. } => table1.num_holes() + table2.num_holes() + 1,
-            ASTNode::Concat { table1, table2 } => table1.num_holes() + table2.num_holes(),
-            ASTNode::Table { .. } => 0,
+            AST::Select { table, .. } => table.num_holes() + 1,
+            AST::Join { table1, table2, .. } => table1.num_holes() + table2.num_holes() + 1,
+            AST::Concat { table1, table2 } => table1.num_holes() + table2.num_holes(),
+            AST::Table { .. } => 0,
         }
     }
 
-    // TODO: check that we test hole count properly here.
-}
-
-#[derive(Debug)]
-/// AbstractQuery represents a query with *exactly one* hole.
-pub(crate) struct AbstractQuery(ASTNode);
-
-impl AbstractQuery {
-    /// [q.with_predicate(p)] returns a new query where p is substituted for the hole in q.
-    pub(crate) fn with_predicate(&self, pred: PredNode) -> ASTNode {
-        debug_assert!(self.0.num_holes() == 1);
-        match &self.0 {
-            ASTNode::Select { fields, table, .. } => ASTNode::Select {
-                fields: fields.clone(),
-                table: Rc::clone(table),
-                pred,
-            },
-            ASTNode::Join {
+    fn with_predicates_aux<'pred>(
+        &self,
+        predicates: &'pred [PredNode],
+    ) -> Result<(AST<PredNode>, &'pred [PredNode]), ()> {
+        match self {
+            AST::Select {
+                fields,
+                table,
+                pred: _,
+            } => {
+                let (pred, predicates) = predicates.split_first().ok_or(())?;
+                let (table, predicates) = table.with_predicates_aux(predicates)?;
+                Ok((
+                    AST::Select {
+                        fields: fields.as_ref().map(Rc::clone),
+                        table: Box::new(table),
+                        pred: pred.clone(),
+                    },
+                    predicates,
+                ))
+            }
+            AST::Join {
                 fields,
                 table1,
                 table2,
-                ..
-            } => ASTNode::Join {
-                fields: fields.clone(),
-                table1: Rc::clone(table1),
-                table2: Rc::clone(table2),
-                pred,
-            },
-            ASTNode::Concat { table1, table2 } => ASTNode::Concat {
-                table1: Rc::clone(table1),
-                table2: Rc::clone(table2),
-            },
-            // NOTE: I don't like catch-all patterns for types that might change in the near-future,
-            // so this match explicitly checks the remaining cases. We could do better by also
-            // expanding all the fields, but that feels verbose.
-            n @ ASTNode::Table { .. } => n.clone(),
+                pred: _,
+            } => {
+                let (pred, predicates) = predicates.split_first().ok_or(())?;
+                let (table1, predicates) = table1.with_predicates_aux(predicates)?;
+                let (table2, predicates) = table2.with_predicates_aux(predicates)?;
+                Ok((
+                    AST::Join {
+                        fields: fields.as_ref().map(Rc::clone),
+                        table1: Box::new(table1),
+                        table2: Box::new(table2),
+                        pred: pred.clone(),
+                    },
+                    predicates,
+                ))
+            }
+            AST::Table { name, columns } => Ok((
+                AST::Table {
+                    name: name.clone(),
+                    columns: columns.clone(),
+                },
+                predicates,
+            )),
+            AST::Concat { table1, table2 } => {
+                let (table1, predicates) = table1.with_predicates_aux(predicates)?;
+                let (table2, predicates) = table2.with_predicates_aux(predicates)?;
+                Ok((
+                    AST::Concat {
+                        table1: Box::new(table1),
+                        table2: Box::new(table2),
+                    },
+                    predicates,
+                ))
+            }
         }
     }
-}
 
-impl TryFrom<&ASTNode> for AbstractQuery {
-    type Error = InvalidQueryError;
-
-    fn try_from(value: &ASTNode) -> Result<Self, Self::Error> {
-        match value.num_holes() {
-            0 => Err(InvalidQueryError::TooFewPredicates),
-            1 => Ok(AbstractQuery(value.clone())),
-            n => Err(InvalidQueryError::TooManyPredicates(n)),
-        }
+    pub(crate) fn with_predicates(&self, predicates: &[PredNode]) -> Result<AST<PredNode>, ()> {
+        Ok(self.with_predicates_aux(predicates)?.0)
     }
 
-    // TODO: test that we correctly error for cases w/ many holes.
+    // TODO: check that we test hole count properly here.
 }
 
 impl ConcTable {
@@ -243,7 +252,7 @@ fn grow(with: &[PredNode], base_predicates: &[PredNode]) -> Vec<PredNode> {
 }
 
 fn synthesize(
-    query: &AbstractQuery,
+    query: &AST<()>,
     target: &ConcTable,
     conn: &rusqlite::Connection,
     fields: &[Field],
@@ -277,7 +286,7 @@ fn synthesize(
     // probably rank by some heuristic that captures complexity so we get the fastest possible evaluation.
 
     // First, evaluate the abstract query.
-    let rows = crate::sql::eval(&query.0, conn)?;
+    let rows = crate::sql::eval_abstract(&query, conn)?;
     // Now, phrase the concrete table as a bitvector.
     let target_intermediate = target.to_intermediate(&rows);
 
