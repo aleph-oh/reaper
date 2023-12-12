@@ -206,16 +206,7 @@ pub fn generate_abstract_queries(example: Example, depth: i32, conn: &Connection
 
     for d in 0..depth {
         queries = grow(queries);
-        println!("After grow");
-        for query in queries.iter() {
-            println!("{:?}", query);
-        }
         queries = elim(queries, &example, conn, d == depth - 1);
-
-        for query in queries.iter() {
-            println!("After grow and elim");
-            println!("{:?}", query);
-        }
     }
 
     queries

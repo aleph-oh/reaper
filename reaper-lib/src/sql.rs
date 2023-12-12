@@ -23,8 +23,8 @@ pub fn create_table(input: &[ConcTable]) -> Result<Connection, Error> {
         let mut insert = String::from("INSERT INTO ");
         insert.push_str(&table.name);
         insert.push_str(" VALUES (");
-        for i in 0..table.values.len() {
-            if i == table.values.len() - 1 {
+        for i in 0..table.columns.len() {
+            if i == table.columns.len() - 1 {
                 insert.push_str(format!("?{}", i + 1).as_str());
             } else {
                 insert.push_str(format!("?{}, ", i + 1).as_str());
@@ -180,7 +180,7 @@ mod tests {
             ConcTable {
                 name: String::from("t1"),
                 columns: vec![String::from("a"), String::from("b")],
-                values: vec![vec![1, 2], vec![3, 4]],
+                values: vec![vec![1, 2], vec![3, 4], vec![5, 6]],
             },
             ConcTable {
                 name: String::from("t2"),
