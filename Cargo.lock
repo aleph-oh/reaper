@@ -1316,6 +1316,7 @@ dependencies = [
  "reaper-lib",
  "rocket",
  "rocket_dyn_templates",
+ "serde",
 ]
 
 [[package]]
@@ -1325,6 +1326,7 @@ dependencies = [
  "bitvec",
  "itertools",
  "rusqlite",
+ "serde",
  "thiserror",
 ]
 

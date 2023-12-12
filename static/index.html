@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+  <link rel="stylesheet" href="chota.min.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SQL Query Synthesizer</title>
@@ -71,8 +72,8 @@
           </tbody>
         </table>
 
-        <button onclick="addColumn(this)">Add Column</button>
-        <button onclick="removeColumn(this)">Remove Column</button>
+        <button onclick="addColumn(this)">Add Col</button>
+        <button onclick="removeColumn(this)">Del Col</button>
         <button onclick="addRow(this)">Add Row</button>
         </br>
         <button onclick="addTable()">Add Table</button>
@@ -84,7 +85,7 @@
     <!-- Constants input box -->
     <div>
       <h3>Constants</h3>
-      <input type="text" placeholder="Comma separated constants">
+      <input type="text" id="constant-box" placeholder="Comma separated constants">
     </div>
   </div>
 
@@ -118,8 +119,8 @@
           </tbody>
         </table>
 
-        <button onclick="addColumn(this)">Add Column</button>
-        <button onclick="removeColumn(this)">Remove Column</button>
+        <button onclick="addColumn(this)">Add Col</button>
+        <button onclick="removeColumn(this)">Del Col</button>
         <button onclick="addRow(this)">Add Row</button>
       </div>
     </div>
@@ -131,8 +132,8 @@
   <div id="synthesize-column" class="column">
     <h2>Synthesize</h2>
     <code>
-            <textarea class="code-block" readonly></textarea>
-        </code>
+            <textarea class="code-block" style="height: 75%;" readonly></textarea>
+     </code>
   </div>
 
   <script>
@@ -168,8 +169,7 @@
         row.insertBefore(td, last);
       });
 
-      // Dynamically adjust column width
-      // adjustColumnWidth(table);
+
     }
 
     function removeRow(button) {
@@ -222,8 +222,6 @@
         secondToLast.remove();
       });
 
-      // Dynamically adjust column width
-      // adjustColumnWidth(table);
     }
 
     function addTable() {
@@ -253,125 +251,124 @@
         "input": [
           {
             "name": "t1",
-            "columns": [
-              {
-                "name": "c0",
-                "values": [0, 1, 2]
-              },
-              {
-                "name": "c1",
-                "values": [0, 1, 2]
-              }
+            "columns": ["c0", "c1"],
+            "values": [
+              [0, 0],
+              [0, 0]
             ]
           },
           {
             "name": "t2",
-            "columns": [
-              {
-                "name": "c0",
-                "values": [0, 1, 2]
-              },
-              {
-                "name": "c1",
-                "values": [0, 1, 2]
-              }
+            "columns": ["c0", "c1"],
+            "values": [
+              [0, 0],
+              [0, 0]
             ]
           }
         ],
-        "output": [
-          {
-            "name": "out",
-            "columns": [
-              {
-                "name": "c0",
-                "values": [0, 1, 2]
-              },
-              {
-                "name": "c1",
-                "values": [0, 1, 2]
-              }
-            ]
-          }
-        ],
+        "output": {
+          "name": "out",
+          "columns": ["c0", "c1"],
+          "values": [
+            [0, 0],
+            [0, 0]
+          ]
+        },
         "constants": [0, 1, 2]
       }
       */
 
       // Get input tables
       var inputTables = document.getElementById('input-tables').children;
-      var input = [];
       for (var i = 0; i < inputTables.length; i++) {
         var table = inputTables[i];
-        var tableName = table.querySelector('h3').textContent;
-        var columns = table.querySelectorAll('thead tr th input');
-        var rows = table.querySelectorAll('tbody tr');
-        var tableObj = {
-          name: tableName,
-          columns: []
-        };
-        for (var j = 0; j < columns.length; j++) {
-          var column = columns[j];
-          var columnName = column.value;
-          var columnObj = {
-            name: columnName,
-            values: []
-          };
-          for (var k = 0; k < rows.length; k++) {
-            var row = rows[k];
-            var cell = row.children[j].querySelector('input');
-            var cellValue = cell.value;
-            columnObj.values.push(cellValue);
-          }
-          tableObj.columns.push(columnObj);
+        var name = table.querySelector('h3').textContent;
+        var columns = [];
+        var values = [];
+
+        // Get column names
+        var headerRow = table.querySelector('thead tr');
+        for (var j = 0; j < headerRow.children.length; j++) {
+          var input = headerRow.children[j].querySelector('input');
+          columns.push(input.value);
         }
-        input.push(tableObj);
+
+        // Get values
+        var bodyRows = table.querySelectorAll('tbody tr');
+        for (var j = 0; j < bodyRows.length; j++) {
+          var row = bodyRows[j];
+          var rowValues = [];
+          for (var k = 0; k < row.children.length - 1; k++) {
+            var input = row.children[k].querySelector('input');
+            rowValues.push(parseInt(input.value));
+          }
+          values.push(rowValues);
+        }
+
+        // Create table object
+        var tableObject = {
+          name: name,
+          columns: columns,
+          values: values
+        };
+
+        // Add table object to input array
+        if (i == 0) {
+          var inputs = [tableObject];
+        } else {
+          inputs.push(tableObject);
+        }
       }
 
       // Get output table
       var outputTable = document.getElementById('output-table');
-      var outputTableName = outputTable.querySelector('h3').textContent;
-      var outputColumns = outputTable.querySelectorAll('thead tr th input');
-      var outputRows = outputTable.querySelectorAll('tbody tr');
-      var output = [];
-      var tableObj = {
-        name: outputTableName,
-        columns: []
+      var name = outputTable.querySelector('h3').textContent;
+      var columns = [];
+      var values = [];
+      
+      var headerRow = outputTable.querySelector('thead tr');
+      for (var j = 0; j < headerRow.children.length; j++) {
+        var input = headerRow.children[j].querySelector('input');
+        columns.push(input.value);
+      }
+
+      var bodyRows = outputTable.querySelectorAll('tbody tr');
+      for (var j = 0; j < bodyRows.length; j++) {
+        var row = bodyRows[j];
+        var rowValues = [];
+        for (var k = 0; k < row.children.length - 1; k++) {
+          var input = row.children[k].querySelector('input');
+          rowValues.push(parseInt(input.value));
+        }
+        values.push(rowValues);
+      }
+
+      // Create table object
+      var output = {
+        name: name,
+        columns: columns,
+        values: values
       };
 
-      for (var i = 0; i < outputColumns.length; i++) {
-        var column = outputColumns[i];
-        var columnName = column.value;
-        var columnObj = {
-          name: columnName,
-          values: []
-        };
-        for (var j = 0; j < outputRows.length; j++) {
-          var row = outputRows[j];
-          var cell = row.children[i].querySelector('input');
-          var cellValue = cell.value;
-          columnObj.values.push(cellValue);
-        }
-        tableObj.columns.push(columnObj);
-      }
-      output.push(tableObj);
-
       // Get constants
-      var constants = document.querySelector('#output-column input').value.split(',');
+      var constants = document.getElementById('constant-box').value.split(',');
       constants = constants.map(function (constant) {
-        return parseInt(constant.trim());
+        return parseInt(constant);
       });
 
       var data = {
-        input: input,
+        input: inputs,
         output: output,
         constants: constants
       };
 
       console.log(data);
 
-      // Display synthesized query
-      var codeBlock = document.querySelector('.code-block');
-      codeBlock.value = 'SELECT * FROM t1, t2 WHERE t1.c0 = t2.c0';
+      // Send data to server
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/synth', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify(data));
     }
 
   </script>
