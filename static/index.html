@@ -51,7 +51,7 @@
         <table border="1">
           <thead>
             <tr>
-              <th><input type="text" value="ID"></th>
+              <th><input type="text" value="ID1"></th>
               <th><input type="text" value="Status"></th>
             </tr>
           </thead>
@@ -104,7 +104,7 @@
         <table border="1">
           <thead>
             <tr>
-              <th><input type="text" value="ID"></th>
+              <th><input type="text" value="ID2"></th>
               <th><input type="text" value="Grade"></th>
             </tr>
           </thead>
@@ -169,7 +169,7 @@
         <table border="1">
           <thead>
             <tr>
-              <th><input type="text" value="ID"></th>
+              <th><input type="text" value="ID1"></th>
               <th><input type="text" value="Grade"></th>
             </tr>
           </thead>
@@ -415,6 +415,17 @@
       xhr.open('POST', '/synth', true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.send(JSON.stringify(data));
+
+      // Get response
+      xhr.onload = function () {
+        if (xhr.status == 200) {
+          console.log(xhr.responseText);
+
+          // Display synthesized query
+          var codeBlock = document.querySelector('.code-block');
+          codeBlock.value = xhr.responseText;
+        }
+      }
     }
 
   </script>
